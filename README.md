@@ -57,12 +57,12 @@ Para comprobar el tratamiento de faltantes, categorías nuevas y estadísticas d
 
 ## Predicción con CART
 
-Con una columna objetivo seleccionada, abrir **Modelo**, elegir la profundidad máxima y pulsar **Ejecutar análisis**. La semilla es 42. Se reserva el 20 % de las filas con objetivo para prueba, redondeando hacia arriba, con un mínimo de dos filas y, para clasificación, al menos tantas como clases. La partición de clasificación es estratificada. El árbol trabaja con las variables numéricas en su escala original.
+Con una columna objetivo seleccionada, abrir **Modelo**, elegir la profundidad máxima y pulsar **Ejecutar análisis**. El tablero usa la semilla 42 por defecto. Se reserva el 20 % de las filas con objetivo para prueba, redondeando hacia arriba, con un mínimo de dos filas y, para clasificación, al menos tantas como clases. La partición de clasificación es estratificada. El árbol trabaja con las variables numéricas en su escala original.
 
 - **Clasificación:** abrir `flores.csv` con la detección automática. Revisar la exactitud y la matriz de confusión, normalizada por clase real.
 - **Regresión:** abrir `mediciones.tsv`, elegir manualmente `temperatura_c` como objetivo y mantener **Regresión**. Revisar MAE y RMSE en grados Celsius, R² y el gráfico de valores reales frente a predichos.
 
-La tabla de importancias suma los indicadores categóricos correspondientes a una misma variable de origen. La figura a 300 DPI y el archivo `metricas.csv` se guardan en una carpeta por ejecución de `reports/`. Cambiar de vista conserva el resultado. Modificar la configuración del modelo requiere volver a ejecutar el análisis.
+La tabla de importancias suma los indicadores categóricos correspondientes a una misma variable de origen. La figura a 300 DPI y el archivo `metricas.csv` se guardan en una carpeta por ejecución de `reports/`. Cambiar de vista conserva el resultado. Al volver a CART o a Comparación se recuperan las opciones seleccionadas. Cambiar la profundidad, los candidatos o el K máximo descarta el resultado de esa vista. Cambiar de archivo, de opciones de lectura, de objetivo o de tarea inicia un nuevo análisis.
 
 ## Agrupamiento
 
@@ -82,6 +82,8 @@ En **Modelo → Comparación**, seleccionar las familias y pulsar **Comparar mod
 | MARS | Límite de términos aditivos de bisagra con construcción progresiva y poda |
 | GAM | Penalización de suavidad de los splines aditivos |
 
+Cada familia registra su estimador y su rejilla de hiperparámetros en un `Candidato`. El campo `escalar` indica si se estandarizan las variables numéricas y `requiere_densa` indica si el estimador necesita una matriz densa. Para incorporar un estimador a una familia existente, se añade su entrada en ese catálogo. El entrenamiento lee ambas propiedades en cada pliegue.
+
 LVQ1, DANN y logística se ofrecen para clasificación. Ridge, Lasso, MARS y GAM se ofrecen para regresión. CART, Random Forest y k-NN admiten ambas tareas. Los datos sintéticos sirven para verificar los recorridos y su tamaño limita la interpretación de diferencias de rendimiento.
 
 La comparación exporta métricas y parámetros elegidos dentro de `reports/comparacion-*/`. Para revisar el fundamento de los métodos especializados, consultar el [artículo de DANN](https://hastie.su.domains/Papers/dann_IEEE.pdf), la [implementación de MARS](https://pypi.org/project/mars-earth/) y la [referencia de GAM](https://pygam.readthedocs.io/en/latest/reference/_autosummary/pygam.pygam.LinearGAM.html).
@@ -91,6 +93,19 @@ La comparación exporta métricas y parámetros elegidos dentro de `reports/comp
 **Modelo → Comparación** exporta curvas ROC y precisión-recall por clase (uno contra el resto) y microagregadas. El AUC se guarda en `auc.csv` y los puntos en `curvas_por_clase.csv`. Las curvas usan puntajes por clase: en DANN son proporciones de votos y en LVQ1 son cercanías relativas a los prototipos. El modelo con mayor puntuación de validación aporta las curvas de aprendizaje y, si existen exactamente dos predictores numéricos con variación, la superficie de decisión en unidades originales. La curva de aprendizaje muestra los tamaños factibles y mantiene fijos los hiperparámetros seleccionados.
 
 En regresión, las figuras incluyen la distribución de residuales y la calibración lineal de las predicciones sobre los valores reales de prueba. Con al menos tres observaciones y variación del objetivo, el sombreado representa el intervalo puntual de confianza del 95 % para la media de esa recta bajo el supuesto de errores independientes, homocedásticos y aproximadamente normales. Para repetir una ejecución, comprobar en `configuracion.json` la huella SHA-256 del archivo, las opciones de lectura, la tarea, la semilla y la configuración del modelo.
+
+Desde Python, `ejecutar_cart`, `comparar` y `agrupar` aceptan el argumento `semilla`. Los resultados supervisados conservan las filas efectivas en `particion`, con los índices y el orden que se usaron para entrenar y evaluar. Las métricas y las curvas de prueba utilizan esa misma reserva. El JSON de cada reporte registra la semilla efectiva.
+
+```python
+import pandas as pd
+
+from flujo import ejecutar_cart
+
+tabla = pd.read_csv("data/iris_petalos.csv")
+resultado = ejecutar_cart(tabla, objetivo="clase", tarea="Clasificación", semilla=7)
+print(resultado.semilla, resultado.metricas)
+print(resultado.particion.objetivo_prueba.head())
+```
 
 ## Informe y demostración
 

@@ -1,5 +1,6 @@
 """Selección de hiperparámetros dentro de entrenamiento y evaluación reservada."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pandas as pd
@@ -21,8 +22,23 @@ from models.supervised.spline_models import modelos_spline
 from models.supervised.tree_models import modelos_de_arbol
 
 
-def catalogo(tarea, max_vecinos=5, semilla=42) -> dict[str, Candidato]:
-    """Devuelve los estimadores aplicables a la tarea y sus rejillas."""
+def catalogo(tarea: str, max_vecinos: int = 5, semilla: int = 42) -> dict[str, Candidato]:
+    """Devuelve los estimadores aplicables a la tarea y sus rejillas.
+
+    Parameters
+    ----------
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+    max_vecinos : int
+        Número de filas del pliegue de entrenamiento más pequeño.
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+
+    Returns
+    -------
+    dict[str, Candidato]
+        Candidatos identificados por su nombre visible.
+    """
     modelos = modelos_lineales(tarea) | modelos_de_arbol(tarea, semilla) | modelos_vecinos(tarea, max_vecinos, semilla)
     if tarea == "Regresión":
         modelos.update(modelos_spline())
@@ -34,7 +50,17 @@ def _densa(datos):
 
 
 class ModeloValidado(ModeloBase):
-    """Pipeline con preprocesamiento reajustado dentro de cada pliegue."""
+    """Ajusta el preprocesamiento y el estimador dentro de cada pliegue.
+
+    Parameters
+    ----------
+    candidato : Candidato
+        Estimador y reglas de preparación declarados por la familia.
+    pliegues : list
+        Pares de posiciones de entrenamiento y validación sobre la reserva de entrenamiento.
+    criterio : str
+        Métrica que utiliza la búsqueda para seleccionar los hiperparámetros.
+    """
 
     def __init__(self, candidato: Candidato, pliegues, criterio):
         self.candidato = candidato
@@ -70,8 +96,29 @@ class Comparacion(ResultadoSupervisado):
     ajustes: dict
 
 
-def comparar(tabla, objetivo, tarea, nombres, semilla=42):
-    """Compara candidatos en particiones comunes con exactitud o MAE como criterio."""
+def comparar(
+    tabla: pd.DataFrame, objetivo: str, tarea: str, nombres: Sequence[str], semilla: int = 42,
+) -> Comparacion:
+    """Compara candidatos en particiones comunes con exactitud o MAE como criterio.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    objetivo : str
+        Columna que se desea predecir.
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+    nombres : secuencia de str
+        Nombres de los candidatos elegidos del catálogo de la tarea.
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+
+    Returns
+    -------
+    Comparacion
+        Ajustes por pliegue, métricas reservadas y filas de la partición común.
+    """
     particion = separar_datos(tabla, objetivo, tarea, semilla)
     predictores = particion.predictores_entrenamiento
     etiquetas = particion.objetivo_entrenamiento

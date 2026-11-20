@@ -4,12 +4,22 @@ import csv
 from dataclasses import dataclass
 from io import BytesIO, StringIO
 from pathlib import Path
+from typing import NamedTuple
 
 import pandas as pd
 import pyarrow as pa
 
 
 NOMBRES_OBJETIVO = {"target", "objetivo", "clase", "class", "label", "etiqueta", "y"}
+
+
+class Lectura(NamedTuple):
+    """Huella del archivo y opciones que determinan la tabla leída."""
+
+    huella: str
+    extension: str
+    separador: str | None
+    encabezado: bool
 
 
 def _leer_texto(contenido, separador, encabezado):

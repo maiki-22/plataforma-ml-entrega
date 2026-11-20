@@ -10,7 +10,22 @@ from evaluation.visualizer import guardar_figuras_eda
 
 
 def obtener_diagnostico(tabla, clave_lectura, destino):
-    """Calcula el diagnóstico y las figuras una vez por lectura en la sesión."""
+    """Calcula el diagnóstico y las figuras una vez por lectura en la sesión.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    clave_lectura : Lectura
+        Identidad de los datos y las opciones de carga.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    tuple[Diagnostico, dict] o None
+        Diagnóstico y rutas de figuras, o None si falló la escritura.
+    """
     if st.session_state.get("lectura_eda") != clave_lectura:
         diagnostico = analizar_tabla(tabla)
         try:
@@ -24,7 +39,13 @@ def obtener_diagnostico(tabla, clave_lectura, destino):
 
 
 def mostrar_variables(diagnostico) -> None:
-    """Presenta una tabla de diagnóstico por consulta."""
+    """Presenta una tabla de diagnóstico por consulta.
+
+    Parameters
+    ----------
+    diagnostico : Diagnostico
+        Estadísticas y matrices de asociación de la tabla activa.
+    """
     st.header("Perfil de variables")
     vistas = ["Estructura y faltantes"]
     if not diagnostico.descriptivos.empty:
@@ -41,7 +62,15 @@ def mostrar_variables(diagnostico) -> None:
 
 
 def mostrar_relaciones(diagnostico, figuras) -> None:
-    """Relaciona cada figura con su matriz y las variables comparadas."""
+    """Relaciona cada figura con su matriz y las variables comparadas.
+
+    Parameters
+    ----------
+    diagnostico : Diagnostico
+        Estadísticas y matrices de asociación de la tabla activa.
+    figuras : dict[str, pathlib.Path]
+        Rutas de las figuras disponibles por título.
+    """
     st.header("Relaciones entre variables")
     if diagnostico.descriptivos.empty:
         st.write("Se necesitan variables numéricas para calcular relaciones.")
@@ -76,7 +105,15 @@ def mostrar_relaciones(diagnostico, figuras) -> None:
 
 
 def mostrar_distribucion(tabla, diagnostico):
-    """Resume una variable en intervalos o en las categorías más frecuentes."""
+    """Resume una variable en intervalos o en las categorías más frecuentes.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    diagnostico : Diagnostico
+        Estadísticas y matrices de asociación de la tabla activa.
+    """
     st.subheader("Distribución")
     nombre = st.selectbox("Variable a explorar", tabla.columns, key="distribucion")
     valores = tabla[nombre].dropna()
@@ -102,7 +139,15 @@ def mostrar_distribucion(tabla, diagnostico):
 
 
 def mostrar_metricas(tabla, diagnostico):
-    """Presenta los indicadores del archivo activo."""
+    """Presenta los indicadores del archivo activo.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    diagnostico : Diagnostico
+        Estadísticas y matrices de asociación de la tabla activa.
+    """
     filas, columnas, faltantes, atipicos = st.columns(4)
     filas.metric("Filas", len(tabla))
     columnas.metric("Columnas", len(tabla.columns))
@@ -112,7 +157,15 @@ def mostrar_metricas(tabla, diagnostico):
 
 
 def mostrar_resumen(tabla, diagnostico):
-    """Muestra las primeras filas junto a la distribución seleccionada."""
+    """Muestra las primeras filas junto a la distribución seleccionada.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    diagnostico : Diagnostico
+        Estadísticas y matrices de asociación de la tabla activa.
+    """
     muestra, distribucion = st.columns([1.2, 1], gap="large")
     with muestra:
         st.subheader("Vista previa")

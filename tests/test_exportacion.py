@@ -39,7 +39,10 @@ class PruebasExportacion(unittest.TestCase):
         auc_esperada = roc_auc_score(reales == "B", ajuste.predict_proba(prueba)[:, 1])
         tabla["clase"] = "otra"
         with TemporaryDirectory() as temporal:
-            carpeta = exportar_comparacion(resultado, ("abc", ".csv", None, True), Path(temporal))
+            with patch.object(ajuste, "predict_proba", wraps=ajuste.predict_proba) as puntuar:
+                carpeta = exportar_comparacion(resultado, ("abc", ".csv", None, True), Path(temporal))
+            puntuar.assert_called_once()
+            pd.testing.assert_frame_equal(puntuar.call_args.args[0], prueba)
             datos = json.loads((carpeta / "configuracion.json").read_text())
             areas = pd.read_csv(carpeta / "auc.csv").set_index("Clase")
         self.assertEqual(datos["semilla"], 7)

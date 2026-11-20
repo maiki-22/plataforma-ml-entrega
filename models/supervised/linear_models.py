@@ -6,7 +6,18 @@ from models.supervised.candidato import Candidato
 
 
 def modelos_lineales(tarea):
-    """Elige la familia lineal compatible con el tipo de objetivo."""
+    """Elige la familia lineal compatible con el tipo de objetivo.
+
+    Parameters
+    ----------
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+
+    Returns
+    -------
+    dict[str, Candidato]
+        Candidatos identificados por su nombre visible.
+    """
     if tarea == "Clasificación":
         return {"Logística": Candidato(LogisticRegression(max_iter=1000), {"C": [0.1, 1, 10]}, escalar=True)}
     return {

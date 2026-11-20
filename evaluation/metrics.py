@@ -5,7 +5,22 @@ from sklearn.metrics import accuracy_score, confusion_matrix, mean_absolute_erro
 
 
 def evaluar_supervisado(reales, predicciones, tarea):
-    """Calcula las métricas y la tabla de resultados de una evaluación supervisada."""
+    """Calcula las métricas y la tabla de resultados de una evaluación supervisada.
+
+    Parameters
+    ----------
+    reales : pandas.Series
+        Valores observados en la partición de prueba.
+    predicciones : array-like
+        Predicciones en el mismo orden que los valores reales.
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+
+    Returns
+    -------
+    tuple[dict, pandas.DataFrame]
+        Métricas y matriz de confusión normalizada o tabla de residuales, según la tarea.
+    """
     if tarea == "Clasificación":
         etiquetas = sorted(set(reales) | set(predicciones))
         matriz = confusion_matrix(reales, predicciones, labels=etiquetas, normalize="true")

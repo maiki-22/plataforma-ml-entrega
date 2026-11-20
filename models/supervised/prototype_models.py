@@ -17,6 +17,20 @@ class LVQ1(ClassifierMixin, BaseEstimator):
         self.epocas = epocas
 
     def fit(self, X, y):
+        """Aprende un prototipo por clase mediante actualizaciones secuenciales.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+        y : array-like
+            Valores objetivo alineados con las filas de X.
+
+        Returns
+        -------
+        LVQ1
+            Estimador ajustado.
+        """
         self.classes_, etiquetas = np.unique(y, return_inverse=True)
         self.prototipos_ = np.array([X[etiquetas == i].mean(axis=0) for i in range(len(self.classes_))])
         azar = np.random.default_rng(self.semilla)
@@ -30,12 +44,35 @@ class LVQ1(ClassifierMixin, BaseEstimator):
         return self
 
     def predict_proba(self, X):
-        """Puntajes relativos por cercanía al prototipo (sin calibración)."""
+        """Puntajes relativos por cercanía al prototipo (sin calibración).
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+
+        Returns
+        -------
+        numpy.ndarray
+            Puntajes de forma (filas, clases), en el orden de classes_.
+        """
         distancias = cdist(X, self.prototipos_, metric="sqeuclidean")
         pesos = np.exp(-(distancias - distancias.min(axis=1, keepdims=True)))
         return pesos / pesos.sum(axis=1, keepdims=True)
 
     def predict(self, X):
+        """Asigna a cada fila la clase de su prototipo más cercano.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+
+        Returns
+        -------
+        numpy.ndarray
+            Una predicción por fila.
+        """
         distancias = cdist(X, self.prototipos_, metric="sqeuclidean")
         return self.classes_[distancias.argmin(axis=1)]
 
@@ -49,6 +86,20 @@ class DANN(ClassifierMixin, BaseEstimator):
         self.epsilon = epsilon
 
     def fit(self, X, y):
+        """Conserva las observaciones para estimar las métricas locales durante la consulta.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+        y : array-like
+            Valores objetivo alineados con las filas de X.
+
+        Returns
+        -------
+        DANN
+            Estimador ajustado.
+        """
         self.datos_ = np.asarray(X)
         self.classes_, self.etiquetas_ = np.unique(y, return_inverse=True)
         return self
@@ -76,14 +127,53 @@ class DANN(ClassifierMixin, BaseEstimator):
         return np.bincount(self.etiquetas_[vecinos], minlength=len(self.classes_)) / len(vecinos)
 
     def predict_proba(self, X):
-        """Fracción de votos por clase en la vecindad adaptada."""
+        """Fracción de votos por clase en la vecindad adaptada.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+
+        Returns
+        -------
+        numpy.ndarray
+            Puntajes de forma (filas, clases), en el orden de classes_.
+        """
         return np.array([self._votos(x) for x in X])
 
     def predict(self, X):
+        """Devuelve la clase con mayor proporción de votos en la vecindad adaptada.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Matriz numérica densa, con una observación por fila.
+
+        Returns
+        -------
+        numpy.ndarray
+            Una predicción por fila.
+        """
         return self.classes_[self.predict_proba(X).argmax(axis=1)]
 
 
 def modelos_vecinos(tarea, max_vecinos, semilla=42):
+    """Construye los candidatos de vecinos compatibles con la tarea y los pliegues.
+
+    Parameters
+    ----------
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+    max_vecinos : int
+        Número de filas del pliegue de entrenamiento más pequeño.
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+
+    Returns
+    -------
+    dict[str, Candidato]
+        Candidatos identificados por su nombre visible.
+    """
     candidatos = [k for k in (1, 3, 5) if k <= max_vecinos]
     vecinos = KNeighborsClassifier if tarea == "Clasificación" else KNeighborsRegressor
     modelos = {

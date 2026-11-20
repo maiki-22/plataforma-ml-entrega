@@ -11,7 +11,21 @@ from models.unsupervised.kmeans_engine import agrupar
 
 
 def mostrar_modelo(tabla, seleccion, lectura, destino, estado: EstadoVista):
-    """Ejecuta CART bajo demanda y conserva únicamente el resultado vigente."""
+    """Ejecuta CART bajo demanda y conserva únicamente el resultado vigente.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    seleccion : Ruta
+        Columna objetivo y tarea elegidas en el tablero.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+    estado : EstadoVista
+        Parámetros y último resultado de esta vista en la sesión.
+    """
     objetivo, tarea = seleccion.objetivo, seleccion.tarea
     st.header(f"Árbol CART de {tarea.lower()}")
     profundidad = st.number_input("Profundidad máxima", 1, 30, estado.parametros or 3, key="profundidad_cart")
@@ -43,7 +57,21 @@ def mostrar_modelo(tabla, seleccion, lectura, destino, estado: EstadoVista):
 
 
 def mostrar_comparacion(tabla, seleccion, lectura, destino, estado: EstadoVista):
-    """Ajusta los candidatos elegidos y distingue resultados de CV y prueba."""
+    """Ajusta los candidatos elegidos y distingue resultados de CV y prueba.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    seleccion : Ruta
+        Columna objetivo y tarea elegidas en el tablero.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+    estado : EstadoVista
+        Parámetros y último resultado de esta vista en la sesión.
+    """
     objetivo, tarea = seleccion.objetivo, seleccion.tarea
     nombres = list(catalogo(tarea))
     anteriores = nombres if estado.parametros is None else estado.parametros
@@ -78,7 +106,19 @@ def mostrar_comparacion(tabla, seleccion, lectura, destino, estado: EstadoVista)
 
 
 def mostrar_agrupamiento(tabla, lectura, destino, estado: EstadoVista):
-    """Compara grupos y presenta el diagnóstico del K elegido."""
+    """Compara grupos y presenta el diagnóstico del K elegido.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+    estado : EstadoVista
+        Parámetros y último resultado de esta vista en la sesión.
+    """
     st.header("Agrupamiento con K-Means")
     limite = st.number_input("K máximo a evaluar", 2, 20, estado.parametros or 8, key="limite_grupos")
     estado.configurar(limite)

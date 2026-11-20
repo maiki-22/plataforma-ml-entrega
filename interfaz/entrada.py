@@ -3,28 +3,29 @@
 from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
-from typing import NamedTuple
 
 import pandas as pd
 import streamlit as st
 
-from core.loader import Ruta, cargar_tabla, seleccionar_ruta
+from core.loader import Lectura, Ruta, cargar_tabla, seleccionar_ruta
 
 
 DELIMITADORES = {"Automático": None, "Coma": ",", "Punto y coma": ";", "Tabulación": "\t", "Barra vertical": "|"}
 
 
-class Lectura(NamedTuple):
-    """Identidad de la tabla que se presenta en esta sesión."""
-
-    huella: str
-    extension: str
-    separador: str | None
-    encabezado: bool
-
-
 def seleccionar_archivo(directorio: Path) -> tuple[str, bytes] | None:
-    """Devuelve el nombre y los bytes del ejemplo o archivo seleccionado."""
+    """Devuelve el nombre y los bytes del ejemplo o archivo seleccionado.
+
+    Parameters
+    ----------
+    directorio : pathlib.Path
+        Carpeta con los archivos de ejemplo.
+
+    Returns
+    -------
+    tuple[str, bytes] o None
+        Nombre y contenido seleccionados, o None mientras se espera una carga.
+    """
     origen = st.radio("Origen de los datos", ["Ejemplo local", "Subir archivo"],
                       horizontal=True, key="origen", label_visibility="collapsed")
     if origen == "Subir archivo":
@@ -37,7 +38,20 @@ def seleccionar_archivo(directorio: Path) -> tuple[str, bytes] | None:
 
 
 def leer_archivo(nombre: str, contenido: bytes) -> tuple[pd.DataFrame, Lectura]:
-    """Conserva una tabla por sesión, identificada por contenido y opciones."""
+    """Conserva una tabla por sesión, identificada por contenido y opciones.
+
+    Parameters
+    ----------
+    nombre : str
+        Nombre del archivo con su extensión.
+    contenido : bytes
+        Contenido completo del archivo.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, Lectura]
+        Tabla y clave de lectura utilizada en el estado de sesión.
+    """
     clave = sha256(contenido).hexdigest()
     separador, encabezado = None, True
     extension = Path(nombre).suffix.lower()
@@ -55,7 +69,20 @@ def leer_archivo(nombre: str, contenido: bytes) -> tuple[pd.DataFrame, Lectura]:
 
 
 def mostrar_ruta(tabla: pd.DataFrame, clave: str) -> Ruta | None:
-    """Explica la tarea seleccionada para la tabla."""
+    """Explica la tarea seleccionada para la tabla.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    clave : str
+        Huella del archivo que identifica los controles.
+
+    Returns
+    -------
+    Ruta o None
+        Selección activa, o None si la columna elegida impide definir la tarea.
+    """
     modo = st.radio("Variable objetivo", ["Automática", "Elegir columna", "Sin objetivo"],
                     horizontal=True, key=f"modo-{clave}")
     objetivo = st.selectbox("Columna objetivo", tabla.columns) if modo == "Elegir columna" else None

@@ -6,6 +6,7 @@ from typing import NamedTuple
 
 import streamlit as st
 
+from core.loader import Lectura, Ruta
 from evaluation.resultados import ResultadoSupervisado
 from models.unsupervised.kmeans_engine import Agrupamiento
 
@@ -23,8 +24,14 @@ class EstadoVista:
     parametros: int | tuple[str, ...] | None = None
     publicacion: Publicacion | None = None
 
-    def configurar(self, parametros):
-        """Descarta la ejecución anterior cuando cambian las opciones del modelo."""
+    def configurar(self, parametros: int | tuple[str, ...]) -> None:
+        """Descarta la ejecución anterior cuando cambian las opciones del modelo.
+
+        Parameters
+        ----------
+        parametros : int o tuple[str, ...]
+            Profundidad de CART, K máximo o nombres de los candidatos seleccionados.
+        """
         if self.parametros != parametros:
             self.parametros = parametros
             self.publicacion = None
@@ -34,14 +41,27 @@ class EstadoVista:
 class EstadoAnalisis:
     """Mantiene una ejecución independiente por vista dentro del contexto activo."""
 
-    contexto: tuple
+    contexto: tuple[Lectura | None, str | None, str | None]
     cart: EstadoVista = field(default_factory=EstadoVista)
     comparacion: EstadoVista = field(default_factory=EstadoVista)
     grupos: EstadoVista = field(default_factory=EstadoVista)
 
 
-def estado_del_analisis(lectura=None, ruta=None) -> EstadoAnalisis:
-    """Recupera las vistas del contexto actual o empieza una sesión de análisis vacía."""
+def estado_del_analisis(lectura: Lectura | None = None, ruta: Ruta | None = None) -> EstadoAnalisis:
+    """Recupera las vistas del contexto actual o empieza una sesión de análisis vacía.
+
+    Parameters
+    ----------
+    lectura : Lectura, optional
+        Identidad de la tabla activa, si se pudo cargar.
+    ruta : Ruta, optional
+        Objetivo y tarea seleccionados para la tabla.
+
+    Returns
+    -------
+    EstadoAnalisis
+        Estado de las tres vistas para el contexto actual.
+    """
     contexto = (lectura, ruta.objetivo, ruta.tarea) if ruta else (lectura, None, None)
     estado = st.session_state.get("estado_analisis")
     if estado is None or estado.contexto != contexto:

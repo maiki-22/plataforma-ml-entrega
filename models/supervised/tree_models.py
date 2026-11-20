@@ -30,7 +30,6 @@ class ModeloCART(ModeloBase):
         self.arbol = estimadores[tarea](max_depth=profundidad, random_state=semilla)
 
     def fit(self, predictores, objetivo):
-        """Ajusta el preprocesador y el árbol con las mismas filas."""
         self.pipeline = Pipeline([
             ("preparar", crear_preprocesador(predictores, escalar=False)),
             ("arbol", self.arbol),
@@ -39,15 +38,19 @@ class ModeloCART(ModeloBase):
         return self
 
     def predict(self, predictores):
-        """Aplica las transformaciones aprendidas y devuelve predicciones."""
         return self.pipeline.predict(predictores)
 
     def score(self, predictores, objetivo):
-        """Devuelve exactitud en clasificación o R² en regresión."""
         return self.pipeline.score(predictores, objetivo)
 
     def importancias(self):
-        """Suma las importancias de los indicadores de cada variable original."""
+        """Suma las importancias de los indicadores de cada variable original.
+
+        Returns
+        -------
+        pandas.Series
+            Importancias sumadas por predictor original y ordenadas de mayor a menor.
+        """
         preparador = self.pipeline.named_steps["preparar"]
         nombres = []
         for tipo, transformacion, columnas in preparador.transformers_:
@@ -61,7 +64,20 @@ class ModeloCART(ModeloBase):
 
 
 def modelos_de_arbol(tarea, semilla=42):
-    """Candidatos de profundidad para árboles y bosques reproducibles."""
+    """Candidatos de profundidad para árboles y bosques reproducibles.
+
+    Parameters
+    ----------
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+
+    Returns
+    -------
+    dict[str, Candidato]
+        Candidatos identificados por su nombre visible.
+    """
     if tarea == "Clasificación":
         arbol, bosque = DecisionTreeClassifier, RandomForestClassifier
     else:

@@ -20,7 +20,9 @@ class ResultadoCART(ResultadoSupervisado):
     profundidad: int
 
 
-def ejecutar_cart(tabla, objetivo, tarea, profundidad=3, semilla=42):
+def ejecutar_cart(
+    tabla: pd.DataFrame, objetivo: str, tarea: str, profundidad: int = 3, semilla: int = 42,
+) -> ResultadoCART:
     """Reserva la prueba antes de ajustar cualquier transformación.
 
     Parameters

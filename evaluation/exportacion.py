@@ -20,7 +20,22 @@ def _preparar_exportacion(destino):
 
 
 def exportar_cart(resultado, lectura, destino):
-    """Publica la figura, las métricas y los parámetros del árbol."""
+    """Publica la figura, las métricas y los parámetros del árbol.
+
+    Parameters
+    ----------
+    resultado : ResultadoCART
+        Árbol ajustado, configuración y evaluación de prueba.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    pathlib.Path
+        Ruta del PNG del árbol en el reporte publicado.
+    """
     with _preparar_exportacion(destino) as temporal:
         figura = guardar_evaluacion_cart(resultado.detalle, resultado.tarea, temporal)
         carpeta = figura.parent
@@ -32,7 +47,22 @@ def exportar_cart(resultado, lectura, destino):
 
 
 def exportar_comparacion(resultado, lectura, destino):
-    """Publica juntas las curvas, las métricas y la selección de hiperparámetros."""
+    """Publica juntas las curvas, las métricas y la selección de hiperparámetros.
+
+    Parameters
+    ----------
+    resultado : Comparacion
+        Modelos validados, métricas y partición efectiva.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    pathlib.Path
+        Directorio publicado con curvas, métricas y parámetros.
+    """
     with _preparar_exportacion(destino) as temporal:
         carpeta = Path(mkdtemp(prefix="comparacion-", dir=temporal))
         reportar_comparacion(resultado, carpeta)
@@ -44,7 +74,22 @@ def exportar_comparacion(resultado, lectura, destino):
 
 
 def exportar_grupos(resultado, lectura, destino):
-    """Publica todas las figuras, etiquetas y métricas del agrupamiento."""
+    """Publica todas las figuras, etiquetas y métricas del agrupamiento.
+
+    Parameters
+    ----------
+    resultado : Agrupamiento
+        Grupos elegidos, métricas por K y proyección de las observaciones.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    dict[str, pathlib.Path]
+        Rutas publicadas de las figuras de codo, siluetas y proyección.
+    """
     with _preparar_exportacion(destino) as temporal:
         figuras = guardar_agrupamiento(resultado, temporal)
         carpeta = figuras["Codo"].parent

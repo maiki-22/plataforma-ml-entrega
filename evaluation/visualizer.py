@@ -76,7 +76,20 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
 
 
 def figura_regresion(detalle, titulo):
-    """Grafica calibración lineal, IC puntual de la media y residuales en prueba."""
+    """Grafica calibración lineal, IC puntual de la media y residuales en prueba.
+
+    Parameters
+    ----------
+    detalle : pandas.DataFrame
+        Valores reales, predicciones y residuales de prueba.
+    titulo : str
+        Título del panel de predicciones.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Calibración y distribución de residuales en dos paneles.
+    """
     from scipy.stats import t
 
     figura = Figure(figsize=(11, 4.5), layout="constrained")
@@ -104,7 +117,22 @@ def figura_regresion(detalle, titulo):
 
 
 def guardar_evaluacion_cart(detalle, tarea, destino):
-    """Guarda la evaluación de prueba como PNG de 300 DPI en un directorio propio."""
+    """Guarda la evaluación de prueba como PNG de 300 DPI en un directorio propio.
+
+    Parameters
+    ----------
+    detalle : pandas.DataFrame
+        Matriz de confusión normalizada o predicciones y residuales.
+    tarea : str
+        Tarea supervisada, «Clasificación» o «Regresión».
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    pathlib.Path
+        Ruta del PNG generado.
+    """
     destino.mkdir(parents=True, exist_ok=True)
     carpeta = Path(mkdtemp(prefix="cart-", dir=destino))
     if tarea == "Clasificación":
@@ -122,7 +150,20 @@ def guardar_evaluacion_cart(detalle, tarea, destino):
 
 
 def guardar_agrupamiento(resultado, destino):
-    """Exporta codo, siluetas individuales, PCA y asignaciones por fila."""
+    """Exporta codo, siluetas individuales, PCA y asignaciones por fila.
+
+    Parameters
+    ----------
+    resultado : Agrupamiento
+        Grupos elegidos, métricas por K y proyección de las observaciones.
+    destino : pathlib.Path
+        Directorio donde se crean los reportes de esta ejecución.
+
+    Returns
+    -------
+    dict[str, pathlib.Path]
+        Figuras por título, junto a los CSV de métricas y asignaciones en el mismo directorio.
+    """
     destino.mkdir(parents=True, exist_ok=True)
     carpeta = Path(mkdtemp(prefix="kmeans-", dir=destino))
     resultado.metricas.to_csv(carpeta / "metricas.csv", index=False)

@@ -12,14 +12,27 @@ from sklearn.metrics import auc, precision_recall_curve, roc_curve
 from sklearn.model_selection import train_test_split
 from threadpoolctl import threadpool_limits
 
+from core.loader import Lectura
 from evaluation.visualizer import _preparar_figura, figura_regresion
 
 
-def guardar_configuracion(carpeta, lectura, **opciones):
-    """Identifica el archivo por contenido y documenta la lectura reproducible."""
-    huella, extension, delimitador, encabezado = lectura
-    datos = dict(sha256=huella, formato=extension, delimitador=delimitador,
-                 encabezado=encabezado, **opciones)
+def guardar_configuracion(carpeta, lectura: Lectura, *, semilla: int, **opciones):
+    """Identifica el archivo por contenido y documenta la lectura reproducible.
+
+    Parameters
+    ----------
+    carpeta : pathlib.Path
+        Directorio de salida de la ejecución.
+    lectura : Lectura
+        Huella del archivo y opciones de lectura utilizadas.
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+    **opciones : dict
+        Metadatos específicos del análisis que se guardarán en configuracion.json.
+    """
+    lectura = Lectura(*lectura)
+    datos = dict(sha256=lectura.huella, formato=lectura.extension, delimitador=lectura.separador,
+                 encabezado=lectura.encabezado, semilla=semilla, **opciones)
     (carpeta / "configuracion.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -135,7 +148,15 @@ def _superficie(ajuste, x, y, nombre, carpeta):
 
 
 def reportar_comparacion(resultado, carpeta):
-    """Exporta gráficos de prueba y diagnóstico del modelo elegido por CV."""
+    """Exporta gráficos de prueba y diagnóstico del modelo elegido por CV.
+
+    Parameters
+    ----------
+    resultado : Comparacion
+        Modelos validados, métricas y partición efectiva.
+    carpeta : pathlib.Path
+        Directorio de salida de la ejecución.
+    """
     nombre = max(resultado.ajustes, key=lambda n: resultado.ajustes[n].best_score_)
     mejor = resultado.ajustes[nombre]
     with threadpool_limits(limits=1):

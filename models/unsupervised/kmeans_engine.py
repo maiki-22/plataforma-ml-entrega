@@ -83,8 +83,23 @@ def _proyectar(datos, modelo, siluetas, indice, semilla):
     return filas, centros
 
 
-def agrupar(tabla, k_maximo=8, semilla=42):
-    """Evalúa de 2 a K grupos y usa el codo normalizado o la silueta."""
+def agrupar(tabla: pd.DataFrame, k_maximo: int = 8, semilla: int = 42) -> Agrupamiento:
+    """Evalúa de 2 a K grupos y usa el codo normalizado o la silueta.
+
+    Parameters
+    ----------
+    tabla : pandas.DataFrame
+        Tabla de observaciones con nombres de columna únicos.
+    k_maximo : int
+        Límite de grupos solicitado, acotado por las observaciones distintas.
+    semilla : int
+        Semilla de la ejecución para las operaciones aleatorias.
+
+    Returns
+    -------
+    Agrupamiento
+        K seleccionado, métricas por inicio, asignaciones y proyección sobre los ejes de PCA.
+    """
     datos = crear_preprocesador(tabla, escalar=True).fit_transform(tabla)
     if issparse(datos):
         datos = datos.toarray()
