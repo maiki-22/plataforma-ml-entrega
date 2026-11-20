@@ -4,6 +4,8 @@ from pygam import LinearGAM
 from pymars import Earth
 from sklearn.base import BaseEstimator, RegressorMixin
 
+from models.supervised.candidato import Candidato
+
 
 class RegresionGAM(RegressorMixin, BaseEstimator):
     """Suavizado aditivo mediante un término P-spline por predictor."""
@@ -21,5 +23,7 @@ class RegresionGAM(RegressorMixin, BaseEstimator):
 
 def modelos_spline():
     """MARS con bisagras y poda GCV, y GAM con suavidad ajustable."""
-    return {"MARS": (Earth(max_degree=1), {"max_terms": [5, 9]}),
-            "GAM": (RegresionGAM(), {"lam": [0.1, 1, 10]})}
+    return {
+        "MARS": Candidato(Earth(max_degree=1), {"max_terms": [5, 9]}, escalar=False, requiere_densa=True),
+        "GAM": Candidato(RegresionGAM(), {"lam": [0.1, 1, 10]}, escalar=False, requiere_densa=True),
+    }

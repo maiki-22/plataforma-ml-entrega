@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
@@ -22,6 +23,19 @@ class PruebasComparacion(unittest.TestCase):
         probabilidades /= probabilidades.sum(axis=1, keepdims=True)
         np.testing.assert_allclose(modelo.predict_proba(consultas), probabilidades)
         np.testing.assert_array_equal(modelo.predict(consultas), ["A", "A", "B"])
+
+    def test_renombrar_candidato_conserva_su_preparacion(self):
+        tabla = pd.read_csv(RAIZ / "data" / "flores.csv")
+        candidatos = catalogo("Clasificación")
+        renombrados = {"Prototipos": candidatos["LVQ1"], "Árbol": candidatos["CART"]}
+        with patch("models.supervised.comparacion.catalogo", return_value=renombrados):
+            resultado = comparar(tabla, "clase", "Clasificación", list(renombrados))
+        prototipos = resultado.ajustes["Prototipos"].best_estimator_
+        arbol = resultado.ajustes["Árbol"].best_estimator_
+        self.assertIn("densa", prototipos.named_steps)
+        self.assertNotIn("densa", arbol.named_steps)
+        self.assertIn("escalar", prototipos["preparar"].named_transformers_["numericas"].named_steps)
+        self.assertNotIn("escalar", arbol["preparar"].named_transformers_["numericas"].named_steps)
 
     def test_todos_los_modelos_sobre_ejemplos(self):
         for tarea, archivo, objetivo, sep in [

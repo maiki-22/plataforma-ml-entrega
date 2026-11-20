@@ -5,6 +5,8 @@ from scipy.spatial.distance import cdist
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
+from models.supervised.candidato import Candidato
+
 
 class LVQ1(ClassifierMixin, BaseEstimator):
     """Aprende un prototipo por clase mediante atracción y repulsión."""
@@ -84,8 +86,13 @@ class DANN(ClassifierMixin, BaseEstimator):
 def modelos_vecinos(tarea, max_vecinos, semilla=42):
     candidatos = [k for k in (1, 3, 5) if k <= max_vecinos]
     vecinos = KNeighborsClassifier if tarea == "Clasificación" else KNeighborsRegressor
-    modelos = {"k-NN": (vecinos(weights="distance", metric="euclidean"), {"n_neighbors": candidatos})}
+    modelos = {
+        "k-NN": Candidato(vecinos(weights="distance", metric="euclidean"),
+                          {"n_neighbors": candidatos}, escalar=True),
+    }
     if tarea == "Clasificación":
-        modelos.update({"LVQ1": (LVQ1(semilla=semilla), {"tasa": [0.01, 0.05]}),
-                        "DANN": (DANN(), {"vecinos": candidatos})})
+        modelos.update({
+            "LVQ1": Candidato(LVQ1(semilla=semilla), {"tasa": [0.01, 0.05]}, escalar=True, requiere_densa=True),
+            "DANN": Candidato(DANN(), {"vecinos": candidatos}, escalar=True, requiere_densa=True),
+        })
     return modelos

@@ -14,13 +14,14 @@ from core.preprocessor import crear_preprocesador
 from evaluation.metrics import evaluar_supervisado
 from evaluation.resultados import ResultadoSupervisado
 from models.base import ModeloBase
+from models.supervised.candidato import Candidato
 from models.supervised.linear_models import modelos_lineales
 from models.supervised.prototype_models import modelos_vecinos
 from models.supervised.spline_models import modelos_spline
 from models.supervised.tree_models import modelos_de_arbol
 
 
-def catalogo(tarea, max_vecinos=5, semilla=42):
+def catalogo(tarea, max_vecinos=5, semilla=42) -> dict[str, Candidato]:
     """Devuelve los estimadores aplicables a la tarea y sus rejillas."""
     modelos = modelos_lineales(tarea) | modelos_de_arbol(tarea, semilla) | modelos_vecinos(tarea, max_vecinos, semilla)
     if tarea == "Regresión":
@@ -35,20 +36,17 @@ def _densa(datos):
 class ModeloValidado(ModeloBase):
     """Pipeline con preprocesamiento reajustado dentro de cada pliegue."""
 
-    def __init__(self, nombre, estimador, parametros, pliegues, criterio):
-        self.nombre = nombre
-        self.estimador = estimador
-        self.parametros = parametros
+    def __init__(self, candidato: Candidato, pliegues, criterio):
+        self.candidato = candidato
         self.pliegues = pliegues
         self.criterio = criterio
 
     def fit(self, predictores, objetivo):
-        escalar = self.nombre not in {"CART", "Random Forest", "MARS", "GAM"}
-        pasos = [("preparar", crear_preprocesador(predictores, escalar=escalar))]
-        if self.nombre in {"LVQ1", "DANN", "MARS", "GAM"}:
+        pasos = [("preparar", crear_preprocesador(predictores, escalar=self.candidato.escalar))]
+        if self.candidato.requiere_densa:
             pasos.append(("densa", FunctionTransformer(_densa)))
-        pasos.append(("modelo", self.estimador))
-        rejilla = {f"modelo__{k}": v for k, v in self.parametros.items()}
+        pasos.append(("modelo", self.candidato.estimador))
+        rejilla = {f"modelo__{k}": v for k, v in self.candidato.parametros.items()}
         self.busqueda = GridSearchCV(Pipeline(pasos), rejilla, cv=self.pliegues,
                                      scoring=self.criterio, error_score="raise")
         self.busqueda.fit(predictores, objetivo)
@@ -88,8 +86,8 @@ def comparar(tabla, objetivo, tarea, nombres, semilla=42):
     filas, detalles, parametros, ajustes = [], {}, {}, {}
     with threadpool_limits(limits=1):
         for nombre in nombres:
-            estimador, rejilla = candidatos[nombre]
-            modelo = ModeloValidado(nombre, estimador, rejilla, pliegues, criterio).fit(predictores, etiquetas)
+            modelo = ModeloValidado(candidatos[nombre], pliegues, criterio)
+            modelo.fit(predictores, etiquetas)
             ajustes[nombre] = modelo.busqueda
             predicciones = modelo.predict(particion.predictores_prueba)
             metricas, detalles[nombre] = evaluar_supervisado(particion.objetivo_prueba, predicciones, tarea)

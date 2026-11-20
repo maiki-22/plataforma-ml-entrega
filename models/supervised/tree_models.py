@@ -7,6 +7,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from core.preprocessor import crear_preprocesador
 from models.base import ModeloBase
+from models.supervised.candidato import Candidato
 
 
 class ModeloCART(ModeloBase):
@@ -65,5 +66,8 @@ def modelos_de_arbol(tarea, semilla=42):
         arbol, bosque = DecisionTreeClassifier, RandomForestClassifier
     else:
         arbol, bosque = DecisionTreeRegressor, RandomForestRegressor
-    return {"CART": (arbol(random_state=semilla), {"max_depth": [2, 4, None]}),
-            "Random Forest": (bosque(n_estimators=60, random_state=semilla), {"max_depth": [3, None]})}
+    return {
+        "CART": Candidato(arbol(random_state=semilla), {"max_depth": [2, 4, None]}, escalar=False),
+        "Random Forest": Candidato(bosque(n_estimators=60, random_state=semilla),
+                                   {"max_depth": [3, None]}, escalar=False),
+    }

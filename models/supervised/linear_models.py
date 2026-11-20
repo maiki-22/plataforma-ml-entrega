@@ -2,10 +2,14 @@
 
 from sklearn.linear_model import Lasso, LogisticRegression, Ridge
 
+from models.supervised.candidato import Candidato
+
 
 def modelos_lineales(tarea):
     """Elige la familia lineal compatible con el tipo de objetivo."""
     if tarea == "Clasificación":
-        return {"Logística": (LogisticRegression(max_iter=1000), {"C": [0.1, 1, 10]})}
-    return {"Ridge": (Ridge(), {"alpha": [0.1, 1, 10]}),
-            "Lasso": (Lasso(max_iter=5000), {"alpha": [0.01, 0.1, 1]})}
+        return {"Logística": Candidato(LogisticRegression(max_iter=1000), {"C": [0.1, 1, 10]}, escalar=True)}
+    return {
+        "Ridge": Candidato(Ridge(), {"alpha": [0.1, 1, 10]}, escalar=True),
+        "Lasso": Candidato(Lasso(max_iter=5000), {"alpha": [0.01, 0.1, 1]}, escalar=True),
+    }
