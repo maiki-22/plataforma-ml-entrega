@@ -46,3 +46,9 @@ Los mapas anotados incluyen hasta ocho variables para facilitar la lectura. Las 
 | tests/ | Pruebas de ingesta, selección de tarea y diagnóstico |
 
 Con el entorno activado, ejecutar las pruebas con `python -m unittest discover -s tests -v`.
+
+## Preparación de predictores
+
+Las variables numéricas usan la mediana de entrenamiento para completar faltantes y valores infinitos. Una columna numérica enteramente vacía en entrenamiento se conserva con valor cero. Los modelos sensibles a escala pueden activar la estandarización posterior. Las categorías se representan con indicadores binarios, incluida la categoría de ausencia cuando se observa durante el ajuste. Una categoría nueva en prueba produce ceros en los indicadores de esa columna.
+
+Para comprobar el tratamiento de faltantes, categorías nuevas y estadísticas de entrenamiento, ejecutar `python -m unittest discover -s tests -p test_preprocesamiento.py -v`.
