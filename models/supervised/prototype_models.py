@@ -1,6 +1,7 @@
 """Vecinos euclidianos, prototipos LVQ1 y vecinos discriminantes DANN."""
 
 import numpy as np
+from scipy.spatial.distance import cdist
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
@@ -27,12 +28,13 @@ class LVQ1(ClassifierMixin, BaseEstimator):
 
     def predict_proba(self, X):
         """Puntajes relativos por cercanía al prototipo (sin calibración)."""
-        distancias = np.array([np.sum((x - self.prototipos_) ** 2, axis=1) for x in X])
+        distancias = cdist(X, self.prototipos_, metric="sqeuclidean")
         pesos = np.exp(-(distancias - distancias.min(axis=1, keepdims=True)))
         return pesos / pesos.sum(axis=1, keepdims=True)
 
     def predict(self, X):
-        return self.classes_[self.predict_proba(X).argmax(axis=1)]
+        distancias = cdist(X, self.prototipos_, metric="sqeuclidean")
+        return self.classes_[distancias.argmin(axis=1)]
 
 
 class DANN(ClassifierMixin, BaseEstimator):

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -13,6 +14,15 @@ class PruebasGrupos(unittest.TestCase):
         self.assertEqual(resultado.filas["Grupo"].nunique(), 3)
         self.assertEqual(resultado.centroides.shape, (3, 2))
         self.assertEqual(len(resultado.metricas.dropna()), 14)
+
+    def test_calculo_por_bloques_conserva_el_resultado(self):
+        tabla = pd.DataFrame({"x": [0, 1, 2, 10, 11, 12], "y": [3, 4, 1, 8, 5, 9]})
+        esperado = agrupar(tabla, 4)
+        with patch("models.unsupervised.kmeans_engine.MAX_BYTES_DISTANCIAS", 0):
+            por_bloques = agrupar(tabla, 4)
+        self.assertEqual(esperado.k, por_bloques.k)
+        pd.testing.assert_frame_equal(esperado.metricas, por_bloques.metricas)
+        pd.testing.assert_frame_equal(esperado.filas, por_bloques.filas)
 
     def test_rechaza_tabla_constante(self):
         with self.assertRaises(ValueError):
