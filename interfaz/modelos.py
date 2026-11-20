@@ -5,18 +5,17 @@ import streamlit as st
 
 from evaluation.exportacion import exportar_cart, exportar_comparacion, exportar_grupos
 from flujo import ejecutar_cart
+from interfaz.estado import EstadoVista, Publicacion
 from models.supervised.comparacion import catalogo, comparar
 from models.unsupervised.kmeans_engine import agrupar
 
 
-def mostrar_modelo(tabla, seleccion, lectura, destino):
+def mostrar_modelo(tabla, seleccion, lectura, destino, estado: EstadoVista):
     """Ejecuta CART bajo demanda y conserva únicamente el resultado vigente."""
     objetivo, tarea = seleccion.objetivo, seleccion.tarea
     st.header(f"Árbol CART de {tarea.lower()}")
-    profundidad = st.number_input("Profundidad máxima", 1, 30, 3)
-    configuracion = (lectura, objetivo, tarea, profundidad)
-    if st.session_state.get("configuracion_cart") != configuracion:
-        st.session_state.pop("resultado_cart", None)
+    profundidad = st.number_input("Profundidad máxima", 1, 30, estado.parametros or 3, key="profundidad_cart")
+    estado.configurar(profundidad)
     if st.button("Ejecutar análisis", type="primary"):
         with st.spinner("Entrenando el árbol y evaluando las filas reservadas…"):
             try:
@@ -25,11 +24,10 @@ def mostrar_modelo(tabla, seleccion, lectura, destino):
             except (ValueError, OSError) as error:
                 st.error(str(error))
                 return
-            st.session_state["resultado_cart"] = resultado, figura
-            st.session_state["configuracion_cart"] = configuracion
-    if "resultado_cart" not in st.session_state:
+            estado.publicacion = Publicacion(resultado, figura)
+    if estado.publicacion is None:
         return
-    resultado, figura = st.session_state["resultado_cart"]
+    resultado, figura = estado.publicacion
     st.caption(f"Entrenamiento: {resultado.entrenamiento} filas · Prueba: {resultado.prueba} · "
                f"Sin objetivo: {resultado.omitidas} · Semilla: {resultado.semilla}")
     for columna, (nombre, valor) in zip(st.columns(len(resultado.metricas)), resultado.metricas.items()):
@@ -44,14 +42,13 @@ def mostrar_modelo(tabla, seleccion, lectura, destino):
     importancia.caption(f"Figura a 300 DPI en reports/{figura.parent.name}/{figura.name}")
 
 
-def mostrar_comparacion(tabla, seleccion, lectura, destino):
+def mostrar_comparacion(tabla, seleccion, lectura, destino, estado: EstadoVista):
     """Ajusta los candidatos elegidos y distingue resultados de CV y prueba."""
     objetivo, tarea = seleccion.objetivo, seleccion.tarea
     nombres = list(catalogo(tarea))
-    candidatos = st.multiselect("Modelos a comparar", nombres, default=nombres, key=f"candidatos-{tarea}")
-    clave = (lectura, objetivo, tarea, tuple(candidatos))
-    if st.session_state.get("clave_comparacion") != clave:
-        st.session_state.pop("comparacion", None)
+    anteriores = nombres if estado.parametros is None else estado.parametros
+    candidatos = st.multiselect("Modelos a comparar", nombres, default=anteriores, key=f"candidatos-{tarea}")
+    estado.configurar(tuple(candidatos))
     if st.button("Comparar modelos", type="primary", disabled=not candidatos):
         with st.spinner("Validando hiperparámetros sobre entrenamiento…"):
             try:
@@ -60,12 +57,11 @@ def mostrar_comparacion(tabla, seleccion, lectura, destino):
             except (ValueError, OSError, np.linalg.LinAlgError) as error:
                 st.error(str(error))
                 return
-            st.session_state["comparacion"] = resultado, carpeta
-            st.session_state["clave_comparacion"] = clave
-    if "comparacion" in st.session_state:
-        resultado, carpeta = st.session_state["comparacion"]
+            estado.publicacion = Publicacion(resultado, carpeta)
+    if estado.publicacion is not None:
+        resultado, carpeta = estado.publicacion
         st.caption(f"{resultado.pliegues} pliegues · {resultado.entrenamiento} filas de entrenamiento · "
-                   f"{resultado.prueba} filas reservadas para la prueba")
+                   f"{resultado.prueba} filas reservadas para la prueba · Semilla: {resultado.semilla}")
         st.dataframe(resultado.resumen, hide_index=True)
         modelo = st.selectbox("Detalle del modelo", resultado.resumen["Modelo"])
         st.write("Hiperparámetros seleccionados")
@@ -81,13 +77,11 @@ def mostrar_comparacion(tabla, seleccion, lectura, destino):
         st.caption(f"Resultados en reports/{carpeta.name}/")
 
 
-def mostrar_agrupamiento(tabla, lectura, destino):
+def mostrar_agrupamiento(tabla, lectura, destino, estado: EstadoVista):
     """Compara grupos y presenta el diagnóstico del K elegido."""
     st.header("Agrupamiento con K-Means")
-    limite = st.number_input("K máximo a evaluar", 2, 20, 8)
-    clave = (lectura, limite)
-    if st.session_state.get("clave_grupos") != clave:
-        st.session_state.pop("grupos", None)
+    limite = st.number_input("K máximo a evaluar", 2, 20, estado.parametros or 8, key="limite_grupos")
+    estado.configurar(limite)
     if st.button("Evaluar grupos", type="primary"):
         try:
             resultado = agrupar(tabla, limite)
@@ -95,10 +89,9 @@ def mostrar_agrupamiento(tabla, lectura, destino):
         except (ValueError, OSError) as error:
             st.error(str(error))
             return
-        st.session_state["grupos"] = resultado, figuras
-        st.session_state["clave_grupos"] = clave
-    if "grupos" in st.session_state:
-        resultado, figuras = st.session_state["grupos"]
+        estado.publicacion = Publicacion(resultado, figuras)
+    if estado.publicacion is not None:
+        resultado, figuras = estado.publicacion
         st.metric("Grupos seleccionados", resultado.k)
         st.caption(resultado.motivo)
         vista = st.segmented_control("Diagnóstico de grupos", list(figuras), default="Codo", required=True)

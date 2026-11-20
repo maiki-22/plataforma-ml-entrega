@@ -54,7 +54,7 @@ class PruebasComparacion(unittest.TestCase):
         next(c for c in app.segmented_control if c.label == "Análisis supervisado").set_value("Comparación").run()
         next(c for c in app.button if c.label == "Comparar modelos").click().run()
         self.assertFalse(app.exception)
-        resultado, carpeta = app.session_state["comparacion"]
+        resultado, carpeta = app.session_state["estado_analisis"].comparacion.publicacion
         self.assertEqual(len(resultado.resumen), 6)
         self.assertTrue((carpeta / "metricas.csv").is_file())
         areas = pd.read_csv(carpeta / "auc.csv")
@@ -62,9 +62,20 @@ class PruebasComparacion(unittest.TestCase):
         self.assertEqual(areas["Clase"].nunique(), 4)
         for nombre in ("Superficie de decisión.png", "Curvas de aprendizaje.png", "configuracion.json"):
             self.assertTrue((carpeta / nombre).is_file())
+        app.multiselect(key="candidatos-Clasificación").set_value(["CART"]).run()
+        self.assertIsNone(app.session_state["estado_analisis"].comparacion.publicacion)
+        next(c for c in app.button if c.label == "Comparar modelos").click().run()
+        carpeta_cart = app.session_state["estado_analisis"].comparacion.publicacion.archivos
+        next(c for c in app.segmented_control if c.label == "Análisis supervisado").set_value("Árbol CART").run()
+        next(c for c in app.segmented_control if c.label == "Análisis supervisado").set_value("Comparación").run()
+        self.assertEqual(app.multiselect(key="candidatos-Clasificación").value, ["CART"])
+        self.assertEqual(app.session_state["estado_analisis"].comparacion.publicacion.archivos, carpeta_cart)
         app.selectbox(key="ejemplo").set_value("mediciones.tsv").run()
+        self.assertIsNone(app.session_state["estado_analisis"].comparacion.publicacion)
         next(c for c in app.button if c.label == "Evaluar grupos").click().run()
         self.assertFalse(app.exception)
-        resultado, figuras = app.session_state["grupos"]
+        resultado, figuras = app.session_state["estado_analisis"].grupos.publicacion
         self.assertEqual(len(resultado.filas), 36)
         self.assertTrue(all(ruta.is_file() for ruta in figuras.values()))
+        app.number_input(key="limite_grupos").set_value(3).run()
+        self.assertIsNone(app.session_state["estado_analisis"].grupos.publicacion)

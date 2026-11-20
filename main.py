@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from interfaz.entrada import leer_archivo, mostrar_ruta, seleccionar_archivo
+from interfaz.estado import estado_del_analisis
 from interfaz.exploracion import (
     mostrar_metricas, mostrar_relaciones, mostrar_resumen, mostrar_variables, obtener_diagnostico,
 )
@@ -24,6 +25,7 @@ def mostrar_inicio() -> None:
         st.subheader("Fuente de datos")
         archivo = seleccionar_archivo(RAIZ / "data")
         if archivo is None:
+            estado_del_analisis()
             principal.title("Abrir un conjunto de datos")
             principal.write("Selecciona un archivo CSV, TSV o Parquet en el panel lateral.")
             return
@@ -31,12 +33,14 @@ def mostrar_inicio() -> None:
         try:
             tabla, lectura = leer_archivo(nombre, contenido)
         except ValueError as error:
+            estado_del_analisis()
             st.error(str(error))
             return
         st.divider()
         st.subheader("Objetivo de aprendizaje")
         seleccion = mostrar_ruta(tabla, lectura.huella)
 
+    estado = estado_del_analisis(lectura, seleccion)
     st.title(nombre, anchor=False)
     resultado = obtener_diagnostico(tabla, lectura, REPORTES)
     if resultado is None:
@@ -45,13 +49,8 @@ def mostrar_inicio() -> None:
     mostrar_metricas(tabla, diagnostico)
 
     titulos = ["Resumen", "Variables", "Relaciones"]
-    if seleccion and seleccion.objetivo is not None:
-        titulos.append("Modelo")
-        st.session_state.pop("grupos", None)
-    else:
-        st.session_state.pop("resultado_cart", None)
-        if seleccion:
-            titulos.append("Agrupamiento")
+    if seleccion:
+        titulos.append("Modelo" if seleccion.objetivo is not None else "Agrupamiento")
     resumen, variables, relaciones, *modelo = st.tabs(titulos)
     with resumen:
         mostrar_resumen(tabla, diagnostico)
@@ -62,14 +61,14 @@ def mostrar_inicio() -> None:
     if modelo:
         with modelo[0]:
             if seleccion.objetivo is None:
-                mostrar_agrupamiento(tabla, lectura, REPORTES)
+                mostrar_agrupamiento(tabla, lectura, REPORTES, estado.grupos)
             else:
                 modo = st.segmented_control("Análisis supervisado", ["Árbol CART", "Comparación"],
                                             default="Árbol CART", required=True)
                 if modo == "Árbol CART":
-                    mostrar_modelo(tabla, seleccion, lectura, REPORTES)
+                    mostrar_modelo(tabla, seleccion, lectura, REPORTES, estado.cart)
                 else:
-                    mostrar_comparacion(tabla, seleccion, lectura, REPORTES)
+                    mostrar_comparacion(tabla, seleccion, lectura, REPORTES, estado.comparacion)
 
 
 if __name__ == "__main__":
