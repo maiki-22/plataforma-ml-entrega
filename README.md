@@ -61,3 +61,7 @@ Con una columna objetivo seleccionada, abrir **Modelo**, elegir la profundidad m
 - **Regresión:** abrir `mediciones.tsv`, elegir manualmente `temperatura_c` como objetivo y mantener **Regresión**. Revisar MAE y RMSE en grados Celsius, R² y el gráfico de valores reales frente a predichos.
 
 La tabla de importancias suma los indicadores categóricos correspondientes a una misma variable de origen. La figura a 300 DPI y el archivo `metricas.csv` se guardan en una carpeta por ejecución de `reports/`. Cambiar de vista conserva el resultado. Modificar la configuración del modelo requiere volver a ejecutar el análisis.
+
+## Agrupamiento
+
+Abrir `mediciones.tsv` y pulsar **Agrupamiento → Evaluar grupos**. Se prueban inicializaciones aleatoria y K-Means++ (cinco reinicios cada una) sobre variables preparadas y numéricas estandarizadas. La curva usa la menor inercia por K y parte de K=1 como referencia. Se selecciona la mayor distancia perpendicular a la cuerda normalizada. Por debajo de 0,05 se usa la mayor silueta. CHI y DBI complementan la comparación. Las etiquetas, la silueta individual y las coordenadas PCA de cada fila se exportan junto con las figuras. Para una única dimensión la segunda coordenada se dibuja en cero.

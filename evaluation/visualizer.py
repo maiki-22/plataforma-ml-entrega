@@ -95,3 +95,40 @@ def guardar_evaluacion_cart(detalle, tarea, destino):
     ruta = carpeta / "evaluacion.png"
     figura.savefig(ruta, dpi=300, bbox_inches="tight")
     return ruta
+
+
+def guardar_agrupamiento(resultado, destino):
+    """Exporta codo, siluetas individuales, PCA y asignaciones por fila."""
+    destino.mkdir(parents=True, exist_ok=True)
+    carpeta = Path(mkdtemp(prefix="kmeans-", dir=destino))
+    resultado.metricas.to_csv(carpeta / "metricas.csv", index=False)
+    resultado.filas.to_csv(carpeta / "asignaciones.csv", index_label="Fila")
+    curva = resultado.metricas.groupby("K")["Inercia"].min()
+    figuras = {}
+    for titulo in ("Codo", "Siluetas", "Proyección"):
+        figura = Figure(figsize=(7, 4), layout="constrained")
+        eje = figura.subplots()
+        if titulo == "Codo":
+            eje.plot(curva.index, curva, marker="o", color="#ADD8E6")
+            eje.axvline(resultado.k, linestyle="--", color="#E6BA80")
+            eje.set(xlabel="Número de grupos", ylabel="Inercia", title=f"K seleccionado = {resultado.k}")
+        elif titulo == "Siluetas":
+            posicion = 0
+            for grupo, filas in resultado.filas.groupby("Grupo"):
+                valores = filas["Silueta"].sort_values()
+                eje.barh(np.arange(len(filas)) + posicion, valores, height=1)
+                eje.text(-0.95, posicion + len(filas) / 2, str(grupo), color="white")
+                posicion += len(filas) + 1
+            eje.axvline(resultado.filas["Silueta"].mean(), color="white", linestyle="--")
+            eje.set(xlim=(-1, 1), xlabel="Silueta individual (línea: promedio)", ylabel="Grupo", yticks=[])
+        else:
+            for grupo, filas in resultado.filas.groupby("Grupo"):
+                eje.scatter(filas["CP1"], filas["CP2"], label=str(grupo), alpha=0.7)
+            eje.scatter(*resultado.centroides.T, marker="X", color="white", edgecolors="black", label="Centroides")
+            eje.set(xlabel="Componente principal 1", ylabel="Componente principal 2")
+            eje.legend(facecolor="#292929", labelcolor="white")
+        _preparar_figura(figura)
+        ruta = carpeta / f"{titulo.lower()}.png"
+        figura.savefig(ruta, dpi=300)
+        figuras[titulo] = ruta
+    return figuras

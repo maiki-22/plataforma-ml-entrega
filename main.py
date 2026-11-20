@@ -10,6 +10,8 @@ import streamlit as st
 
 from core.eda import UMBRAL_CORRELACION, analizar_tabla
 from evaluation.visualizer import guardar_evaluacion_cart, guardar_figuras_eda
+from models.unsupervised.kmeans_engine import agrupar
+from evaluation.visualizer import guardar_agrupamiento
 from flujo import ejecutar_cart
 from core.loader import cargar_tabla, seleccionar_ruta
 
@@ -102,6 +104,7 @@ def mostrar_ruta(tabla, clave):
             st.warning(mensaje)
         else:
             st.info(mensaje)
+        return None, ruta.tarea
     else:
         st.text(f"{ruta.motivo} Columna: {ruta.objetivo}")
         tareas = ["Clasificación", "Regresión"]
@@ -174,6 +177,34 @@ def mostrar_modelo(tabla, seleccion, lectura):
     importancia.caption(f"Figura a 300 DPI en reports/{figura.parent.name}/{figura.name}")
 
 
+def mostrar_agrupamiento(tabla, lectura):
+    """Compara grupos y presenta el diagnóstico del K elegido."""
+    st.header("Agrupamiento con K-Means")
+    limite = st.number_input("K máximo a evaluar", 2, 20, 8)
+    clave = (lectura, limite)
+    if st.session_state.get("clave_grupos") != clave:
+        st.session_state.pop("grupos", None)
+    if st.button("Evaluar grupos", type="primary"):
+        try:
+            resultado = agrupar(tabla, limite)
+            figuras = guardar_agrupamiento(resultado, DATOS.parent / "reports")
+        except (ValueError, OSError) as error:
+            st.error(str(error))
+            return
+        st.session_state["grupos"] = resultado, figuras
+        st.session_state["clave_grupos"] = clave
+    if "grupos" in st.session_state:
+        resultado, figuras = st.session_state["grupos"]
+        st.metric("Grupos seleccionados", resultado.k)
+        st.caption(resultado.motivo)
+        vista = st.segmented_control("Diagnóstico de grupos", list(figuras), default="Codo", required=True)
+        grafico, detalle = st.columns([1.3, 1])
+        grafico.image(str(figuras[vista]), alt=vista)
+        detalle.dataframe(resultado.metricas, hide_index=True)
+        ruta = figuras[vista].parent / "asignaciones.csv"
+        detalle.download_button("Descargar grupos por fila", ruta.read_bytes(), file_name=ruta.name)
+
+
 def mostrar_inicio() -> None:
     """Organiza los controles de sesión y el tablero del archivo activo."""
     st.set_page_config(page_title="Cuaderno de datos", page_icon=":material/table_chart:", layout="wide")
@@ -223,10 +254,13 @@ def mostrar_inicio() -> None:
     atipicos.metric("Valores atípicos", cantidad, help="Suma de observaciones atípicas por variable numérica según IQR.")
 
     titulos = ["Resumen", "Variables", "Relaciones"]
-    if seleccion:
+    if seleccion and seleccion[0] is not None:
         titulos.append("Modelo")
+        st.session_state.pop("grupos", None)
     else:
         st.session_state.pop("resultado_cart", None)
+        if seleccion:
+            titulos.append("Agrupamiento")
     resumen, variables, relaciones, *modelo = st.tabs(titulos)
     with resumen:
         muestra, distribucion = st.columns([1.2, 1], gap="large")
@@ -242,7 +276,10 @@ def mostrar_inicio() -> None:
         mostrar_relaciones(diagnostico, figuras)
     if modelo:
         with modelo[0]:
-            mostrar_modelo(tabla, seleccion, lectura)
+            if seleccion[0] is None:
+                mostrar_agrupamiento(tabla, lectura)
+            else:
+                mostrar_modelo(tabla, seleccion, lectura)
 
 
 if __name__ == "__main__":
