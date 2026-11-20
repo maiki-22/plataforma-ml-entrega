@@ -73,3 +73,25 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
     figura.savefig(ruta, dpi=300, bbox_inches="tight")
     figuras["Dispersión"] = ruta
     return figuras
+
+
+def guardar_evaluacion_cart(detalle, tarea, destino):
+    """Guarda la evaluación de prueba como PNG de 300 DPI en un directorio propio."""
+    destino.mkdir(parents=True, exist_ok=True)
+    carpeta = Path(mkdtemp(prefix="cart-", dir=destino))
+    figura = Figure(figsize=(7, 5), layout="constrained")
+    eje = figura.subplots()
+    if tarea == "Clasificación":
+        sns.heatmap(detalle, annot=len(detalle) <= 20, fmt=".0%", vmin=0, vmax=1,
+                    cmap="Blues", ax=eje, cbar_kws={"label": "Proporción por clase real"})
+        eje.set_title("Matriz de confusión en prueba")
+    else:
+        eje.scatter(detalle["Real"], detalle["Predicción"], color="#D4D4D4")
+        limites = [detalle[["Real", "Predicción"]].min().min(), detalle[["Real", "Predicción"]].max().max()]
+        eje.plot(limites, limites, linestyle="--", color="#8AB6C1", label="Predicción exacta")
+        eje.set(xlabel="Valor real", ylabel="Predicción", title="Predicciones en prueba")
+        eje.legend(facecolor="#292929", labelcolor="#ECECEC")
+    _preparar_figura(figura)
+    ruta = carpeta / "evaluacion.png"
+    figura.savefig(ruta, dpi=300, bbox_inches="tight")
+    return ruta

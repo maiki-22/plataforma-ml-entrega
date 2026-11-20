@@ -9,7 +9,8 @@ import pandas as pd
 import streamlit as st
 
 from core.eda import UMBRAL_CORRELACION, analizar_tabla
-from evaluation.visualizer import guardar_figuras_eda
+from evaluation.visualizer import guardar_evaluacion_cart, guardar_figuras_eda
+from flujo import ejecutar_cart
 from core.loader import cargar_tabla, seleccionar_ruta
 
 
@@ -84,7 +85,7 @@ def mostrar_relaciones(diagnostico, figuras) -> None:
         st.caption(f"Figuras a 300 DPI en reports/{next(iter(figuras.values())).parent.name}/")
 
 
-def mostrar_ruta(tabla, clave) -> None:
+def mostrar_ruta(tabla, clave):
     """Explica la tarea seleccionada para la tabla."""
     modo = st.radio("Variable objetivo", ["Automática", "Elegir columna", "Sin objetivo"],
                     horizontal=True, key=f"modo-{clave}")
@@ -107,6 +108,7 @@ def mostrar_ruta(tabla, clave) -> None:
         tarea = st.selectbox("Tarea supervisada", tareas, index=tareas.index(ruta.tarea),
                              key=f"tarea-{clave}-{ruta.objetivo}-{ruta.tarea}")
         st.info(f"Ruta seleccionada: aprendizaje supervisado · {tarea}.")
+        return ruta.objetivo, tarea
 
 
 def mostrar_distribucion(tabla, diagnostico):
@@ -133,6 +135,43 @@ def mostrar_distribucion(tabla, diagnostico):
             y=alt.Y("Categoría:N", sort="-x"), x="Filas:Q", tooltip=["Categoría:N", "Filas:Q"])
         st.caption("Hasta diez categorías por frecuencia.")
     st.altair_chart(grafico.properties(height=190), width="stretch", alt=f"Distribución de {nombre}")
+
+
+def mostrar_modelo(tabla, seleccion, lectura):
+    """Ejecuta CART bajo demanda y conserva únicamente el resultado vigente."""
+    objetivo, tarea = seleccion
+    st.header(f"Árbol CART de {tarea.lower()}")
+    profundidad = st.number_input("Profundidad máxima", 1, 30, 3)
+    configuracion = (lectura, objetivo, tarea, profundidad)
+    if st.session_state.get("configuracion_cart") != configuracion:
+        st.session_state.pop("resultado_cart", None)
+    if st.button("Ejecutar análisis", type="primary"):
+        with st.spinner("Entrenando el árbol y evaluando las filas reservadas…"):
+            try:
+                resultado = ejecutar_cart(tabla, objetivo, tarea, profundidad)
+                figura = guardar_evaluacion_cart(resultado.detalle, tarea, DATOS.parent / "reports")
+                pd.Series(resultado.metricas, name="Valor").to_csv(
+                    figura.parent / "metricas.csv", index_label="Métrica")
+            except (ValueError, OSError) as error:
+                st.error(str(error))
+                return
+            st.session_state["resultado_cart"] = resultado, figura
+            st.session_state["configuracion_cart"] = configuracion
+    if "resultado_cart" not in st.session_state:
+        return
+    resultado, figura = st.session_state["resultado_cart"]
+    st.caption(f"Entrenamiento: {resultado.entrenamiento} filas · Prueba: {resultado.prueba} · "
+               f"Sin objetivo: {resultado.omitidas} · Semilla: 42")
+    for columna, (nombre, valor) in zip(st.columns(len(resultado.metricas)), resultado.metricas.items()):
+        columna.metric(nombre, f"{valor:.3f}")
+    evaluacion, importancia = st.columns([1.4, 1])
+    evaluacion.image(str(figura), alt="Evaluación del árbol sobre los datos de prueba")
+    with evaluacion.expander("Valores de la evaluación"):
+        st.dataframe(resultado.detalle)
+    importancia.subheader("Importancia de variables")
+    importancia.dataframe(resultado.modelo.importancias(), column_config={
+        "Importancia": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.3f")})
+    importancia.caption(f"Figura a 300 DPI en reports/{figura.parent.name}/{figura.name}")
 
 
 def mostrar_inicio() -> None:
@@ -168,10 +207,11 @@ def mostrar_inicio() -> None:
             return
         st.divider()
         st.subheader("Objetivo de aprendizaje")
-        mostrar_ruta(tabla, clave)
+        seleccion = mostrar_ruta(tabla, clave)
 
     st.title(nombre, anchor=False)
-    resultado = obtener_diagnostico(tabla, (clave, Path(nombre).suffix.lower(), separador, encabezado))
+    lectura = (clave, Path(nombre).suffix.lower(), separador, encabezado)
+    resultado = obtener_diagnostico(tabla, lectura)
     if resultado is None:
         return
     diagnostico, figuras = resultado
@@ -182,7 +222,12 @@ def mostrar_inicio() -> None:
     cantidad = int(diagnostico.descriptivos["Atípicos (IQR)"].sum()) if not diagnostico.descriptivos.empty else 0
     atipicos.metric("Valores atípicos", cantidad, help="Suma de observaciones atípicas por variable numérica según IQR.")
 
-    resumen, variables, relaciones = st.tabs(["Resumen", "Variables", "Relaciones"])
+    titulos = ["Resumen", "Variables", "Relaciones"]
+    if seleccion:
+        titulos.append("Modelo")
+    else:
+        st.session_state.pop("resultado_cart", None)
+    resumen, variables, relaciones, *modelo = st.tabs(titulos)
     with resumen:
         muestra, distribucion = st.columns([1.2, 1], gap="large")
         with muestra:
@@ -195,6 +240,9 @@ def mostrar_inicio() -> None:
         mostrar_variables(diagnostico)
     with relaciones:
         mostrar_relaciones(diagnostico, figuras)
+    if modelo:
+        with modelo[0]:
+            mostrar_modelo(tabla, seleccion, lectura)
 
 
 if __name__ == "__main__":

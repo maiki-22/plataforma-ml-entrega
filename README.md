@@ -52,3 +52,12 @@ Con el entorno activado, ejecutar las pruebas con `python -m unittest discover -
 Las variables numéricas usan la mediana de entrenamiento para completar faltantes y valores infinitos. Una columna numérica enteramente vacía en entrenamiento se conserva con valor cero. Los modelos sensibles a escala pueden activar la estandarización posterior. Las categorías se representan con indicadores binarios, incluida la categoría de ausencia cuando se observa durante el ajuste. Una categoría nueva en prueba produce ceros en los indicadores de esa columna.
 
 Para comprobar el tratamiento de faltantes, categorías nuevas y estadísticas de entrenamiento, ejecutar `python -m unittest discover -s tests -p test_preprocesamiento.py -v`.
+
+## Predicción con CART
+
+Con una columna objetivo seleccionada, abrir **Modelo**, elegir la profundidad máxima y pulsar **Ejecutar análisis**. La semilla es 42. Se reserva el 20 % de las filas con objetivo para prueba, redondeando hacia arriba, con un mínimo de dos filas y, para clasificación, al menos tantas como clases. La partición de clasificación es estratificada. El árbol trabaja con las variables numéricas en su escala original.
+
+- **Clasificación:** abrir `flores.csv` con la detección automática. Revisar la exactitud y la matriz de confusión, normalizada por clase real.
+- **Regresión:** abrir `mediciones.tsv`, elegir manualmente `temperatura_c` como objetivo y mantener **Regresión**. Revisar MAE y RMSE en grados Celsius, R² y el gráfico de valores reales frente a predichos.
+
+La tabla de importancias suma los indicadores categóricos correspondientes a una misma variable de origen. La figura a 300 DPI y el archivo `metricas.csv` se guardan en una carpeta por ejecución de `reports/`. Cambiar de vista conserva el resultado. Modificar la configuración del modelo requiere volver a ejecutar el análisis.

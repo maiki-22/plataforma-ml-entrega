@@ -43,7 +43,7 @@ class PruebasIngesta(unittest.TestCase):
 
     def test_recorrido_streamlit(self):
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "main.py")).run()
-        self.assertEqual([pestana.label for pestana in app.tabs], ["Resumen", "Variables", "Relaciones"])
+        self.assertEqual([pestana.label for pestana in app.tabs], ["Resumen", "Variables", "Relaciones", "Modelo"])
         self.assertEqual([metrica.value for metrica in app.metric[:2]], ["36", "3"])
         app.selectbox(key="distribucion").set_value("clase").run()
         self.assertTrue(any("categorías por frecuencia" in texto.value for texto in app.caption))
