@@ -6,19 +6,18 @@ import pandas as pd
 
 from core.particion import separar_datos
 from evaluation.metrics import evaluar_supervisado
+from evaluation.resultados import ResultadoSupervisado
 from models.supervised.tree_models import ModeloCART
 
 
 @dataclass
-class ResultadoCART:
+class ResultadoCART(ResultadoSupervisado):
     """Evaluación, partición y modelo de una ejecución reproducible."""
 
     modelo: ModeloCART
     metricas: dict
     detalle: pd.DataFrame
-    entrenamiento: int
-    prueba: int
-    omitidas: int
+    profundidad: int
 
 
 def ejecutar_cart(tabla, objetivo, tarea, profundidad=3, semilla=42):
@@ -42,8 +41,10 @@ def ejecutar_cart(tabla, objetivo, tarea, profundidad=3, semilla=42):
     ResultadoCART
         Modelo ajustado y evaluación fuera de entrenamiento.
     """
-    x_entrenar, x_probar, y_entrenar, y_probar, omitidas = separar_datos(tabla, objetivo, tarea, semilla)
-    modelo = ModeloCART(tarea, profundidad, semilla).fit(x_entrenar, y_entrenar)
-    predicciones = modelo.predict(x_probar)
-    metricas, detalle = evaluar_supervisado(y_probar, predicciones, tarea)
-    return ResultadoCART(modelo, metricas, detalle, len(y_entrenar), len(y_probar), omitidas)
+    particion = separar_datos(tabla, objetivo, tarea, semilla)
+    modelo = ModeloCART(tarea, profundidad, semilla)
+    modelo.fit(particion.predictores_entrenamiento, particion.objetivo_entrenamiento)
+    predicciones = modelo.predict(particion.predictores_prueba)
+    metricas, detalle = evaluar_supervisado(particion.objetivo_prueba, predicciones, tarea)
+    return ResultadoCART(objetivo=objetivo, tarea=tarea, semilla=semilla, particion=particion,
+                         modelo=modelo, metricas=metricas, detalle=detalle, profundidad=profundidad)

@@ -21,13 +21,15 @@ class Agrupamiento:
     metricas: pd.DataFrame
     filas: pd.DataFrame
     centroides: np.ndarray
+    k_maximo: int
+    semilla: int
 
 
 # Por encima de este presupuesto se delega el cálculo por bloques a sklearn.
 MAX_BYTES_DISTANCIAS = 32 * 1024**2
 
 
-def _evaluar_candidatos(datos, limite):
+def _evaluar_candidatos(datos, limite, semilla):
     """Compara ambas inicializaciones con las mismas distancias euclidianas."""
     registros, ganadores = [], {}
     # Una sola hebra evita sobrecarga de OpenMP con las tablas de la demo.
@@ -41,7 +43,7 @@ def _evaluar_candidatos(datos, limite):
             metrica = "euclidean"
         for k in range(2, limite + 1):
             for inicio in ("k-means++", "random"):
-                modelo = KMeans(k, init=inicio, n_init=5, random_state=42).fit(datos)
+                modelo = KMeans(k, init=inicio, n_init=5, random_state=semilla).fit(datos)
                 grupos = modelo.labels_
                 siluetas = silhouette_samples(entrada_silueta, grupos, metric=metrica)
                 registros.append({"K": k, "Inicio": inicio, "Inercia": modelo.inertia_,
@@ -67,9 +69,9 @@ def _elegir_k(inercias, ganadores):
     return k, motivo
 
 
-def _proyectar(datos, modelo, siluetas, indice):
+def _proyectar(datos, modelo, siluetas, indice, semilla):
     """Proyecta las filas y sus centroides sobre los mismos ejes."""
-    pca = PCA(n_components=min(2, datos.shape[1]), random_state=42)
+    pca = PCA(n_components=min(2, datos.shape[1]), random_state=semilla)
     puntos = pca.fit_transform(datos)
     centros = pca.transform(modelo.cluster_centers_)
     if puntos.shape[1] == 1:
@@ -81,7 +83,7 @@ def _proyectar(datos, modelo, siluetas, indice):
     return filas, centros
 
 
-def agrupar(tabla, k_maximo=8):
+def agrupar(tabla, k_maximo=8, semilla=42):
     """Evalúa de 2 a K grupos y usa el codo normalizado o la silueta."""
     datos = crear_preprocesador(tabla, escalar=True).fit_transform(tabla)
     if issparse(datos):
@@ -89,11 +91,11 @@ def agrupar(tabla, k_maximo=8):
     limite = min(k_maximo, len(datos) - 1, len(np.unique(datos, axis=0)))
     if limite < 2:
         raise ValueError("Se necesitan tres filas y dos observaciones distintas como mínimo.")
-    registros, ganadores = _evaluar_candidatos(datos, limite)
+    registros, ganadores = _evaluar_candidatos(datos, limite, semilla)
     inercia_inicial = np.square(datos - datos.mean(axis=0)).sum()
     inercias = np.array([inercia_inicial] + [modelo.inertia_ for modelo, _ in ganadores.values()])
     k, motivo = _elegir_k(inercias, ganadores)
     modelo, siluetas = ganadores[k]
-    filas, centros = _proyectar(datos, modelo, siluetas, tabla.index)
+    filas, centros = _proyectar(datos, modelo, siluetas, tabla.index, semilla)
     registros.insert(0, {"K": 1, "Inicio": "Referencia", "Inercia": inercias[0]})
-    return Agrupamiento(k, motivo, pd.DataFrame(registros), filas, centros)
+    return Agrupamiento(k, motivo, pd.DataFrame(registros), filas, centros, k_maximo, semilla)

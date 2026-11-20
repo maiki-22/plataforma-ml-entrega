@@ -9,14 +9,15 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 class LVQ1(ClassifierMixin, BaseEstimator):
     """Aprende un prototipo por clase mediante atracción y repulsión."""
 
-    def __init__(self, tasa=0.05, epocas=20):
+    def __init__(self, tasa=0.05, epocas=20, semilla=42):
+        self.semilla = semilla
         self.tasa = tasa
         self.epocas = epocas
 
     def fit(self, X, y):
         self.classes_, etiquetas = np.unique(y, return_inverse=True)
         self.prototipos_ = np.array([X[etiquetas == i].mean(axis=0) for i in range(len(self.classes_))])
-        azar = np.random.default_rng(42)
+        azar = np.random.default_rng(self.semilla)
         for epoca in range(self.epocas):
             paso = self.tasa * (1 - epoca / self.epocas)
             for i in azar.permutation(len(X)):
@@ -80,11 +81,11 @@ class DANN(ClassifierMixin, BaseEstimator):
         return self.classes_[self.predict_proba(X).argmax(axis=1)]
 
 
-def modelos_vecinos(tarea, max_vecinos):
+def modelos_vecinos(tarea, max_vecinos, semilla=42):
     candidatos = [k for k in (1, 3, 5) if k <= max_vecinos]
     vecinos = KNeighborsClassifier if tarea == "Clasificación" else KNeighborsRegressor
     modelos = {"k-NN": (vecinos(weights="distance", metric="euclidean"), {"n_neighbors": candidatos})}
     if tarea == "Clasificación":
-        modelos.update({"LVQ1": (LVQ1(), {"tasa": [0.01, 0.05]}),
+        modelos.update({"LVQ1": (LVQ1(semilla=semilla), {"tasa": [0.01, 0.05]}),
                         "DANN": (DANN(), {"vecinos": candidatos})})
     return modelos

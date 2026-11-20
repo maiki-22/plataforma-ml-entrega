@@ -19,34 +19,36 @@ def _preparar_exportacion(destino):
         yield Path(temporal)
 
 
-def exportar_cart(resultado, objetivo, tarea, profundidad, lectura, destino):
+def exportar_cart(resultado, lectura, destino):
     """Publica la figura, las métricas y los parámetros del árbol."""
     with _preparar_exportacion(destino) as temporal:
-        figura = guardar_evaluacion_cart(resultado.detalle, tarea, temporal)
+        figura = guardar_evaluacion_cart(resultado.detalle, resultado.tarea, temporal)
         carpeta = figura.parent
-        guardar_configuracion(carpeta, lectura, objetivo=objetivo, tarea=tarea, profundidad=profundidad)
+        guardar_configuracion(carpeta, lectura, objetivo=resultado.objetivo, tarea=resultado.tarea,
+                              profundidad=resultado.profundidad, semilla=resultado.semilla)
         pd.Series(resultado.metricas, name="Valor").to_csv(carpeta / "metricas.csv", index_label="Métrica")
         publicada = carpeta.rename(destino / carpeta.name)
     return publicada / figura.name
 
 
-def exportar_comparacion(resultado, tabla, objetivo, tarea, lectura, destino):
+def exportar_comparacion(resultado, lectura, destino):
     """Publica juntas las curvas, las métricas y la selección de hiperparámetros."""
     with _preparar_exportacion(destino) as temporal:
         carpeta = Path(mkdtemp(prefix="comparacion-", dir=temporal))
-        reportar_comparacion(resultado, tabla, objetivo, tarea, carpeta)
-        guardar_configuracion(carpeta, lectura, objetivo=objetivo, tarea=tarea,
+        reportar_comparacion(resultado, carpeta)
+        guardar_configuracion(carpeta, lectura, objetivo=resultado.objetivo, tarea=resultado.tarea, semilla=resultado.semilla,
                               pliegues=resultado.pliegues, modelos=list(resultado.parametros))
         resultado.resumen.to_csv(carpeta / "metricas.csv", index=False)
         (carpeta / "parametros.json").write_text(json.dumps(resultado.parametros, indent=2), encoding="utf-8")
         return carpeta.rename(destino / carpeta.name)
 
 
-def exportar_grupos(resultado, limite, lectura, destino):
+def exportar_grupos(resultado, lectura, destino):
     """Publica todas las figuras, etiquetas y métricas del agrupamiento."""
     with _preparar_exportacion(destino) as temporal:
         figuras = guardar_agrupamiento(resultado, temporal)
         carpeta = figuras["Codo"].parent
-        guardar_configuracion(carpeta, lectura, tarea="Agrupamiento", k_maximo=limite, k=resultado.k)
+        guardar_configuracion(carpeta, lectura, tarea="Agrupamiento", k_maximo=resultado.k_maximo, k=resultado.k,
+                              semilla=resultado.semilla)
         publicada = carpeta.rename(destino / carpeta.name)
     return {nombre: publicada / ruta.name for nombre, ruta in figuras.items()}

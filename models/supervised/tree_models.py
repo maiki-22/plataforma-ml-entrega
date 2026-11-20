@@ -59,11 +59,11 @@ class ModeloCART(ModeloBase):
         return valores.groupby(level=0, sort=False).sum().sort_values(ascending=False)
 
 
-def modelos_de_arbol(tarea):
+def modelos_de_arbol(tarea, semilla=42):
     """Candidatos de profundidad para árboles y bosques reproducibles."""
     if tarea == "Clasificación":
         arbol, bosque = DecisionTreeClassifier, RandomForestClassifier
     else:
         arbol, bosque = DecisionTreeRegressor, RandomForestRegressor
-    return {"CART": (arbol(random_state=42), {"max_depth": [2, 4, None]}),
-            "Random Forest": (bosque(n_estimators=60, random_state=42), {"max_depth": [3, None]})}
+    return {"CART": (arbol(random_state=semilla), {"max_depth": [2, 4, None]}),
+            "Random Forest": (bosque(n_estimators=60, random_state=semilla), {"max_depth": [3, None]})}

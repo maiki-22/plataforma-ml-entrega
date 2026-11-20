@@ -21,7 +21,7 @@ def mostrar_modelo(tabla, seleccion, lectura, destino):
         with st.spinner("Entrenando el árbol y evaluando las filas reservadas…"):
             try:
                 resultado = ejecutar_cart(tabla, objetivo, tarea, profundidad)
-                figura = exportar_cart(resultado, objetivo, tarea, profundidad, lectura, destino)
+                figura = exportar_cart(resultado, lectura, destino)
             except (ValueError, OSError) as error:
                 st.error(str(error))
                 return
@@ -31,7 +31,7 @@ def mostrar_modelo(tabla, seleccion, lectura, destino):
         return
     resultado, figura = st.session_state["resultado_cart"]
     st.caption(f"Entrenamiento: {resultado.entrenamiento} filas · Prueba: {resultado.prueba} · "
-               f"Sin objetivo: {resultado.omitidas} · Semilla: 42")
+               f"Sin objetivo: {resultado.omitidas} · Semilla: {resultado.semilla}")
     for columna, (nombre, valor) in zip(st.columns(len(resultado.metricas)), resultado.metricas.items()):
         columna.metric(nombre, f"{valor:.3f}")
     evaluacion, importancia = st.columns([1.4, 1])
@@ -56,7 +56,7 @@ def mostrar_comparacion(tabla, seleccion, lectura, destino):
         with st.spinner("Validando hiperparámetros sobre entrenamiento…"):
             try:
                 resultado = comparar(tabla, objetivo, tarea, candidatos)
-                carpeta = exportar_comparacion(resultado, tabla, objetivo, tarea, lectura, destino)
+                carpeta = exportar_comparacion(resultado, lectura, destino)
             except (ValueError, OSError, np.linalg.LinAlgError) as error:
                 st.error(str(error))
                 return
@@ -91,7 +91,7 @@ def mostrar_agrupamiento(tabla, lectura, destino):
     if st.button("Evaluar grupos", type="primary"):
         try:
             resultado = agrupar(tabla, limite)
-            figuras = exportar_grupos(resultado, limite, lectura, destino)
+            figuras = exportar_grupos(resultado, lectura, destino)
         except (ValueError, OSError) as error:
             st.error(str(error))
             return

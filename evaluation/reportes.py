@@ -12,7 +12,6 @@ from sklearn.metrics import auc, precision_recall_curve, roc_curve
 from sklearn.model_selection import train_test_split
 from threadpoolctl import threadpool_limits
 
-from core.particion import separar_datos
 from evaluation.visualizer import _preparar_figura, figura_regresion
 
 
@@ -20,8 +19,8 @@ def guardar_configuracion(carpeta, lectura, **opciones):
     """Identifica el archivo por contenido y documenta la lectura reproducible."""
     huella, extension, delimitador, encabezado = lectura
     datos = dict(sha256=huella, formato=extension, delimitador=delimitador,
-                 encabezado=encabezado, semilla=42, **opciones)
-    (carpeta / "configuracion.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2))
+                 encabezado=encabezado, **opciones)
+    (carpeta / "configuracion.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _exportar(figura, carpeta, nombre):
@@ -80,7 +79,7 @@ def _curvas_umbral(ajustes, prueba, reales, carpeta):
     _exportar(figura, carpeta, "ROC y precisión-recall")
 
 
-def _aprendizaje(ajuste, x, y, carpeta, nombre):
+def _aprendizaje(ajuste, x, y, carpeta, nombre, semilla):
     """Mide el error en validación con subconjuntos estratificados de entrenamiento."""
     figura = Figure(figsize=(10, 4), layout="constrained")
     tamano, parametro = figura.subplots(1, 2)
@@ -91,7 +90,7 @@ def _aprendizaje(ajuste, x, y, carpeta, nombre):
             if fraccion < 1:
                 try:
                     indices, _ = train_test_split(entrenamiento, train_size=fraccion,
-                                                  stratify=y.iloc[entrenamiento], random_state=42)
+                                                  stratify=y.iloc[entrenamiento], random_state=semilla)
                 except ValueError:
                     continue
             vecinos = ajuste.best_params_.get("modelo__n_neighbors", 1)
@@ -135,17 +134,19 @@ def _superficie(ajuste, x, y, nombre, carpeta):
     _exportar(figura, carpeta, "Superficie de decisión")
 
 
-def reportar_comparacion(resultado, tabla, objetivo, tarea, carpeta):
+def reportar_comparacion(resultado, carpeta):
     """Exporta gráficos de prueba y diagnóstico del modelo elegido por CV."""
     nombre = max(resultado.ajustes, key=lambda n: resultado.ajustes[n].best_score_)
     mejor = resultado.ajustes[nombre]
     with threadpool_limits(limits=1):
-        if tarea == "Clasificación":
-            x, prueba, y, reales, _ = separar_datos(tabla, objetivo, tarea)
-            _curvas_umbral(resultado.ajustes, prueba, reales, carpeta)
-            _aprendizaje(mejor, x, y, carpeta, nombre)
-            _superficie(mejor, x, y, nombre, carpeta)
+        if resultado.tarea == "Clasificación":
+            particion = resultado.particion
+            _curvas_umbral(resultado.ajustes, particion.predictores_prueba, particion.objetivo_prueba, carpeta)
+            predictores = particion.predictores_entrenamiento
+            etiquetas = particion.objetivo_entrenamiento
+            _aprendizaje(mejor, predictores, etiquetas, carpeta, nombre, resultado.semilla)
+            _superficie(mejor, predictores, etiquetas, nombre, carpeta)
         else:
             for modelo, detalle in resultado.detalles.items():
-                figura = figura_regresion(detalle, f"{objetivo} · {modelo}")
+                figura = figura_regresion(detalle, f"{resultado.objetivo} · {modelo}")
                 _exportar(figura, carpeta, f"Regresión {modelo}")

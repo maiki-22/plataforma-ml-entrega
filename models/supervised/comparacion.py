@@ -12,6 +12,7 @@ from threadpoolctl import threadpool_limits
 from core.particion import separar_datos
 from core.preprocessor import crear_preprocesador
 from evaluation.metrics import evaluar_supervisado
+from evaluation.resultados import ResultadoSupervisado
 from models.base import ModeloBase
 from models.supervised.linear_models import modelos_lineales
 from models.supervised.prototype_models import modelos_vecinos
@@ -19,9 +20,9 @@ from models.supervised.spline_models import modelos_spline
 from models.supervised.tree_models import modelos_de_arbol
 
 
-def catalogo(tarea, max_vecinos=5):
+def catalogo(tarea, max_vecinos=5, semilla=42):
     """Devuelve los estimadores aplicables a la tarea y sus rejillas."""
-    modelos = modelos_lineales(tarea) | modelos_de_arbol(tarea) | modelos_vecinos(tarea, max_vecinos)
+    modelos = modelos_lineales(tarea) | modelos_de_arbol(tarea, semilla) | modelos_vecinos(tarea, max_vecinos, semilla)
     if tarea == "Regresión":
         modelos.update(modelos_spline())
     return modelos
@@ -61,36 +62,41 @@ class ModeloValidado(ModeloBase):
 
 
 @dataclass
-class Comparacion:
+class Comparacion(ResultadoSupervisado):
+    """Ajustes, métricas y parámetros de los candidatos sobre las mismas filas."""
+
     resumen: pd.DataFrame
     detalles: dict
     parametros: dict
     pliegues: int
-    entrenamiento: int
-    prueba: int
     ajustes: dict
 
 
-def comparar(tabla, objetivo, tarea, nombres):
+def comparar(tabla, objetivo, tarea, nombres, semilla=42):
     """Compara candidatos en particiones comunes con exactitud o MAE como criterio."""
-    x, prueba, y, reales, _ = separar_datos(tabla, objetivo, tarea)
+    particion = separar_datos(tabla, objetivo, tarea, semilla)
+    predictores = particion.predictores_entrenamiento
+    etiquetas = particion.objetivo_entrenamiento
     clasificacion = tarea == "Clasificación"
-    cantidad = min(5, int(y.value_counts().min()) if clasificacion else len(y))
+    cantidad = min(5, int(etiquetas.value_counts().min()) if clasificacion else len(etiquetas))
     if cantidad < 2:
         raise ValueError("Se necesitan al menos dos observaciones de entrenamiento por clase para validación cruzada.")
     divisor = StratifiedKFold if clasificacion else KFold
-    pliegues = list(divisor(cantidad, shuffle=True, random_state=42).split(x, y))
-    candidatos = catalogo(tarea, min(len(indices) for indices, _ in pliegues))
+    pliegues = list(divisor(cantidad, shuffle=True, random_state=semilla).split(predictores, etiquetas))
+    candidatos = catalogo(tarea, min(len(indices) for indices, _ in pliegues), semilla=semilla)
     criterio = "accuracy" if clasificacion else "neg_mean_absolute_error"
     filas, detalles, parametros, ajustes = [], {}, {}, {}
     with threadpool_limits(limits=1):
         for nombre in nombres:
             estimador, rejilla = candidatos[nombre]
-            modelo = ModeloValidado(nombre, estimador, rejilla, pliegues, criterio).fit(x, y)
+            modelo = ModeloValidado(nombre, estimador, rejilla, pliegues, criterio).fit(predictores, etiquetas)
             ajustes[nombre] = modelo.busqueda
-            metricas, detalles[nombre] = evaluar_supervisado(reales, modelo.predict(prueba), tarea)
+            predicciones = modelo.predict(particion.predictores_prueba)
+            metricas, detalles[nombre] = evaluar_supervisado(particion.objetivo_prueba, predicciones, tarea)
             cv = modelo.busqueda.best_score_
             columna = "Exactitud CV" if clasificacion else "MAE CV"
             filas.append({"Modelo": nombre, columna: cv if clasificacion else -cv, **metricas})
             parametros[nombre] = {k.removeprefix("modelo__"): v for k, v in modelo.busqueda.best_params_.items()}
-    return Comparacion(pd.DataFrame(filas), detalles, parametros, cantidad, len(x), len(prueba), ajustes)
+    return Comparacion(objetivo=objetivo, tarea=tarea, semilla=semilla, particion=particion,
+                       resumen=pd.DataFrame(filas), detalles=detalles, parametros=parametros,
+                       pliegues=cantidad, ajustes=ajustes)
