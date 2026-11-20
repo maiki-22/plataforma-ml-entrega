@@ -68,6 +68,7 @@ class Comparacion:
     pliegues: int
     entrenamiento: int
     prueba: int
+    ajustes: dict
 
 
 def comparar(tabla, objetivo, tarea, nombres):
@@ -81,14 +82,15 @@ def comparar(tabla, objetivo, tarea, nombres):
     pliegues = list(divisor(cantidad, shuffle=True, random_state=42).split(x, y))
     candidatos = catalogo(tarea, min(len(indices) for indices, _ in pliegues))
     criterio = "accuracy" if clasificacion else "neg_mean_absolute_error"
-    filas, detalles, parametros = [], {}, {}
+    filas, detalles, parametros, ajustes = [], {}, {}, {}
     with threadpool_limits(limits=1):
         for nombre in nombres:
             estimador, rejilla = candidatos[nombre]
             modelo = ModeloValidado(nombre, estimador, rejilla, pliegues, criterio).fit(x, y)
+            ajustes[nombre] = modelo.busqueda
             metricas, detalles[nombre] = evaluar_cart(reales, modelo.predict(prueba), tarea)
             cv = modelo.busqueda.best_score_
             columna = "Exactitud CV" if clasificacion else "MAE CV"
             filas.append({"Modelo": nombre, columna: cv if clasificacion else -cv, **metricas})
             parametros[nombre] = {k.removeprefix("modelo__"): v for k, v in modelo.busqueda.best_params_.items()}
-    return Comparacion(pd.DataFrame(filas), detalles, parametros, cantidad, len(x), len(prueba))
+    return Comparacion(pd.DataFrame(filas), detalles, parametros, cantidad, len(x), len(prueba), ajustes)

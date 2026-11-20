@@ -33,6 +33,11 @@ class PruebasComparacion(unittest.TestCase):
         resultado, carpeta = app.session_state["comparacion"]
         self.assertEqual(len(resultado.resumen), 6)
         self.assertTrue((carpeta / "metricas.csv").is_file())
+        areas = pd.read_csv(carpeta / "auc.csv")
+        self.assertTrue(areas["AUC ROC"].between(0, 1).all())
+        self.assertEqual(areas["Clase"].nunique(), 4)
+        for nombre in ("Superficie de decisión.png", "Curvas de aprendizaje.png", "configuracion.json"):
+            self.assertTrue((carpeta / nombre).is_file())
         app.selectbox(key="ejemplo").set_value("mediciones.tsv").run()
         next(c for c in app.button if c.label == "Evaluar grupos").click().run()
         self.assertFalse(app.exception)

@@ -25,8 +25,14 @@ class LVQ1(ClassifierMixin, BaseEstimator):
                 self.prototipos_[ganador] += signo * paso * diferencias[ganador]
         return self
 
+    def predict_proba(self, X):
+        """Puntajes relativos por cercanía al prototipo (sin calibración)."""
+        distancias = np.array([np.sum((x - self.prototipos_) ** 2, axis=1) for x in X])
+        pesos = np.exp(-(distancias - distancias.min(axis=1, keepdims=True)))
+        return pesos / pesos.sum(axis=1, keepdims=True)
+
     def predict(self, X):
-        return self.classes_[[np.argmin(np.sum((x - self.prototipos_) ** 2, axis=1)) for x in X]]
+        return self.classes_[self.predict_proba(X).argmax(axis=1)]
 
 
 class DANN(ClassifierMixin, BaseEstimator):
@@ -42,7 +48,7 @@ class DANN(ClassifierMixin, BaseEstimator):
         self.classes_, self.etiquetas_ = np.unique(y, return_inverse=True)
         return self
 
-    def _predecir_uno(self, x):
+    def _votos(self, x):
         diferencias = self.datos_ - x
         cercanos = np.argsort(np.sum(diferencias ** 2, axis=1))[:self.entorno]
         entorno = self.datos_[cercanos]
@@ -62,10 +68,14 @@ class DANN(ClassifierMixin, BaseEstimator):
         metrica = inversa @ entre @ inversa + self.epsilon * inversa
         distancias = np.sum((diferencias @ metrica) * diferencias, axis=1)
         vecinos = np.argsort(distancias)[:self.vecinos]
-        return self.classes_[np.bincount(self.etiquetas_[vecinos]).argmax()]
+        return np.bincount(self.etiquetas_[vecinos], minlength=len(self.classes_)) / len(vecinos)
+
+    def predict_proba(self, X):
+        """Fracción de votos por clase en la vecindad adaptada."""
+        return np.array([self._votos(x) for x in X])
 
     def predict(self, X):
-        return np.array([self._predecir_uno(x) for x in X])
+        return self.classes_[self.predict_proba(X).argmax(axis=1)]
 
 
 def modelos_vecinos(tarea, max_vecinos):

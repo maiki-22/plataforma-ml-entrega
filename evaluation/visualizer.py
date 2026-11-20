@@ -75,6 +75,34 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
     return figuras
 
 
+def figura_regresion(detalle, titulo):
+    """Grafica calibración lineal, IC puntual de la media y residuales en prueba."""
+    from scipy.stats import t
+
+    figura = Figure(figsize=(11, 4.5), layout="constrained")
+    eje, residuales = figura.subplots(1, 2)
+    x = detalle["Real"].to_numpy(dtype=float)
+    y = detalle["Predicción"].to_numpy(dtype=float)
+    eje.scatter(x, y, color="#AACDDF")
+    limites = [min(x.min(), y.min()), max(x.max(), y.max())]
+    eje.plot(limites, limites, "--", color="#BABABA", label="Predicción exacta")
+    suma = np.square(x - x.mean()).sum()
+    if len(x) > 2 and suma > 0:
+        pendiente, intercepto = np.polyfit(x, y, 1)
+        escala = np.sqrt(np.square(y - (pendiente*x + intercepto)).sum() / (len(x)-2))
+        rejilla = np.linspace(x.min(), x.max(), 100)
+        media = pendiente * rejilla + intercepto
+        margen = t.ppf(0.975, len(x)-2) * escala * np.sqrt(1/len(x) + (rejilla-x.mean())**2/suma)
+        eje.plot(rejilla, media, color="#F3B679", label="Calibración lineal")
+        eje.fill_between(rejilla, media-margen, media+margen, color="#F3B679", alpha=0.3, label="IC 95 % de la media")
+    eje.set(xlabel="Valor real", ylabel="Predicción", title=titulo)
+    eje.legend(fontsize=8, facecolor="#292929", labelcolor="white")
+    residuales.hist(detalle["Residual"], bins="auto", color="#AACDDF", edgecolor="#292929")
+    residuales.axvline(0, linestyle=":", color="white")
+    residuales.set(xlabel="Valor real menos predicción", ylabel="Filas", title="Distribución de residuales")
+    return figura
+
+
 def guardar_evaluacion_cart(detalle, tarea, destino):
     """Guarda la evaluación de prueba como PNG de 300 DPI en un directorio propio."""
     destino.mkdir(parents=True, exist_ok=True)
@@ -86,11 +114,7 @@ def guardar_evaluacion_cart(detalle, tarea, destino):
                     cmap="Blues", ax=eje, cbar_kws={"label": "Proporción por clase real"})
         eje.set_title("Matriz de confusión en prueba")
     else:
-        eje.scatter(detalle["Real"], detalle["Predicción"], color="#D4D4D4")
-        limites = [detalle[["Real", "Predicción"]].min().min(), detalle[["Real", "Predicción"]].max().max()]
-        eje.plot(limites, limites, linestyle="--", color="#8AB6C1", label="Predicción exacta")
-        eje.set(xlabel="Valor real", ylabel="Predicción", title="Predicciones en prueba")
-        eje.legend(facecolor="#292929", labelcolor="#ECECEC")
+        figura = figura_regresion(detalle, "Predicciones en prueba")
     _preparar_figura(figura)
     ruta = carpeta / "evaluacion.png"
     figura.savefig(ruta, dpi=300, bbox_inches="tight")

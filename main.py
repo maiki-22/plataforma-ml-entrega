@@ -14,6 +14,7 @@ from core.eda import UMBRAL_CORRELACION, analizar_tabla
 from evaluation.visualizer import guardar_agrupamiento, guardar_evaluacion_cart, guardar_figuras_eda
 from models.unsupervised.kmeans_engine import agrupar
 from models.supervised.comparacion import catalogo, comparar
+from evaluation.reportes import guardar_configuracion, reportar_comparacion
 from flujo import ejecutar_cart
 from core.loader import cargar_tabla, seleccionar_ruta
 
@@ -155,6 +156,7 @@ def mostrar_modelo(tabla, seleccion, lectura):
             try:
                 resultado = ejecutar_cart(tabla, objetivo, tarea, profundidad)
                 figura = guardar_evaluacion_cart(resultado.detalle, tarea, DATOS.parent / "reports")
+                guardar_configuracion(figura.parent, lectura, objetivo=objetivo, tarea=tarea, profundidad=profundidad)
                 pd.Series(resultado.metricas, name="Valor").to_csv(
                     figura.parent / "metricas.csv", index_label="Métrica")
             except (ValueError, OSError) as error:
@@ -194,6 +196,8 @@ def mostrar_comparacion(tabla, seleccion, lectura):
                 destino = DATOS.parent / "reports"
                 destino.mkdir(parents=True, exist_ok=True)
                 carpeta = Path(mkdtemp(prefix="comparacion-", dir=destino))
+                reportar_comparacion(resultado, tabla, objetivo, tarea, carpeta)
+                guardar_configuracion(carpeta, lectura, objetivo=objetivo, tarea=tarea, pliegues=resultado.pliegues, modelos=candidatos)
                 resultado.resumen.to_csv(carpeta / "metricas.csv", index=False)
                 (carpeta / "parametros.json").write_text(json.dumps(resultado.parametros, indent=2))
             except (ValueError, OSError, np.linalg.LinAlgError) as error:
@@ -211,6 +215,11 @@ def mostrar_comparacion(tabla, seleccion, lectura):
         st.json(resultado.parametros[modelo])
         st.write("Matriz normalizada en prueba" if tarea == "Clasificación" else "Predicciones en prueba")
         st.dataframe(resultado.detalles[modelo])
+        figuras = sorted(carpeta.glob("*.png"))
+        if figuras:
+            vista = st.selectbox("Reporte gráfico", figuras, format_func=lambda ruta: ruta.stem)
+            st.image(str(vista), alt=vista.stem)
+            st.download_button("Descargar reporte", vista.read_bytes(), file_name=vista.name)
         st.caption(f"Resultados en reports/{carpeta.name}/")
 
 
@@ -225,6 +234,7 @@ def mostrar_agrupamiento(tabla, lectura):
         try:
             resultado = agrupar(tabla, limite)
             figuras = guardar_agrupamiento(resultado, DATOS.parent / "reports")
+            guardar_configuracion(figuras["Codo"].parent, lectura, tarea="Agrupamiento", k_maximo=limite, k=resultado.k)
         except (ValueError, OSError) as error:
             st.error(str(error))
             return
