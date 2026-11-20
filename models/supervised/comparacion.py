@@ -9,9 +9,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 from threadpoolctl import threadpool_limits
 
+from core.particion import separar_datos
 from core.preprocessor import crear_preprocesador
-from evaluation.metrics import evaluar_cart
-from flujo import separar_datos
+from evaluation.metrics import evaluar_supervisado
 from models.base import ModeloBase
 from models.supervised.linear_models import modelos_lineales
 from models.supervised.prototype_models import modelos_vecinos
@@ -88,7 +88,7 @@ def comparar(tabla, objetivo, tarea, nombres):
             estimador, rejilla = candidatos[nombre]
             modelo = ModeloValidado(nombre, estimador, rejilla, pliegues, criterio).fit(x, y)
             ajustes[nombre] = modelo.busqueda
-            metricas, detalles[nombre] = evaluar_cart(reales, modelo.predict(prueba), tarea)
+            metricas, detalles[nombre] = evaluar_supervisado(reales, modelo.predict(prueba), tarea)
             cv = modelo.busqueda.best_score_
             columna = "Exactitud CV" if clasificacion else "MAE CV"
             filas.append({"Modelo": nombre, columna: cv if clasificacion else -cv, **metricas})

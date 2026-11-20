@@ -107,9 +107,9 @@ def guardar_evaluacion_cart(detalle, tarea, destino):
     """Guarda la evaluación de prueba como PNG de 300 DPI en un directorio propio."""
     destino.mkdir(parents=True, exist_ok=True)
     carpeta = Path(mkdtemp(prefix="cart-", dir=destino))
-    figura = Figure(figsize=(7, 5), layout="constrained")
-    eje = figura.subplots()
     if tarea == "Clasificación":
+        figura = Figure(figsize=(7, 5), layout="constrained")
+        eje = figura.subplots()
         sns.heatmap(detalle, annot=len(detalle) <= 20, fmt=".0%", vmin=0, vmax=1,
                     cmap="Blues", ax=eje, cbar_kws={"label": "Proporción por clase real"})
         eje.set_title("Matriz de confusión en prueba")

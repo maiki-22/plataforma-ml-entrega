@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from models.supervised.comparacion import catalogo, comparar
+from models.supervised.prototype_models import LVQ1
 from streamlit.testing.v1 import AppTest
 
 
@@ -13,6 +14,15 @@ RAIZ = Path(__file__).resolve().parents[1]
 
 
 class PruebasComparacion(unittest.TestCase):
+    def test_lvq_conserva_puntajes_y_desempata_por_orden_de_clase(self):
+        modelo = LVQ1(epocas=0).fit(np.array([[0.], [4.]]), np.array(["A", "B"]))
+        consultas = np.array([[2.], [1.], [3.]])
+        distancia_relativa = np.exp(-8)
+        probabilidades = np.array([[0.5, 0.5], [1, distancia_relativa], [distancia_relativa, 1]])
+        probabilidades /= probabilidades.sum(axis=1, keepdims=True)
+        np.testing.assert_allclose(modelo.predict_proba(consultas), probabilidades)
+        np.testing.assert_array_equal(modelo.predict(consultas), ["A", "A", "B"])
+
     def test_todos_los_modelos_sobre_ejemplos(self):
         for tarea, archivo, objetivo, sep in [
             ("Clasificación", "flores.csv", "clase", ","),

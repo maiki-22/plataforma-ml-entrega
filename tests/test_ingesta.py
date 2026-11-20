@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 from streamlit.testing.v1 import AppTest
@@ -40,6 +41,20 @@ class PruebasIngesta(unittest.TestCase):
         self.assertIsNone(seleccionar_ruta(tabla, sin_objetivo=True).objetivo)
         with self.assertRaises(ValueError):
             seleccionar_ruta(tabla, "ausente")
+
+    def test_reutiliza_tabla_solo_si_coinciden_contenido_y_lectura(self):
+        with patch("interfaz.entrada.cargar_tabla", wraps=cargar_tabla) as cargar:
+            app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "main.py")).run()
+            app.selectbox(key="distribucion").set_value("clase").run()
+            self.assertEqual(cargar.call_count, 1)
+            app.radio(key="origen").set_value("Subir archivo").run()
+            app.file_uploader[0].upload("tabla.csv", b"a,b\n1,2\n").run()
+            app.file_uploader[0].upload("tabla.csv", b"a,b\n3,4\n").run()
+            self.assertEqual(cargar.call_count, 3)
+            self.assertEqual(app.session_state["tabla_activa"].iloc[0, 0], 3)
+            app.checkbox[0].uncheck().run()
+            self.assertEqual(cargar.call_count, 4)
+            self.assertEqual(app.session_state["tabla_activa"].shape, (2, 2))
 
     def test_recorrido_streamlit(self):
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "main.py")).run()

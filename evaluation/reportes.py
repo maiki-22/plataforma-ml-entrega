@@ -12,8 +12,8 @@ from sklearn.metrics import auc, precision_recall_curve, roc_curve
 from sklearn.model_selection import train_test_split
 from threadpoolctl import threadpool_limits
 
+from core.particion import separar_datos
 from evaluation.visualizer import _preparar_figura, figura_regresion
-from flujo import separar_datos
 
 
 def guardar_configuracion(carpeta, lectura, **opciones):
@@ -137,11 +137,11 @@ def _superficie(ajuste, x, y, nombre, carpeta):
 
 def reportar_comparacion(resultado, tabla, objetivo, tarea, carpeta):
     """Exporta gráficos de prueba y diagnóstico del modelo elegido por CV."""
-    x, prueba, y, reales, _ = separar_datos(tabla, objetivo, tarea)
     nombre = max(resultado.ajustes, key=lambda n: resultado.ajustes[n].best_score_)
     mejor = resultado.ajustes[nombre]
     with threadpool_limits(limits=1):
         if tarea == "Clasificación":
+            x, prueba, y, reales, _ = separar_datos(tabla, objetivo, tarea)
             _curvas_umbral(resultado.ajustes, prueba, reales, carpeta)
             _aprendizaje(mejor, x, y, carpeta, nombre)
             _superficie(mejor, x, y, nombre, carpeta)

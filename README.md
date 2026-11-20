@@ -36,14 +36,16 @@ Los mapas anotados incluyen hasta ocho variables para facilitar la lectura. Las 
 
 ## Organización
 
-| Ubicación | Responsabilidad prevista |
+| Ubicación | Responsabilidad |
 |---|---|
-| main.py | Interfaz en español |
-| core/ | Carga de tablas, análisis exploratorio y preprocesamiento |
+| main.py | Entrada de Streamlit y navegación del tablero |
+| interfaz/ | Controles de archivo y objetivo, vistas de exploración y ejecución de modelos |
+| core/ | Carga de tablas, análisis exploratorio, partición de entrenamiento y prueba y preprocesamiento |
+| flujo.py | Entrenamiento y evaluación del árbol CART |
 | models/ | Contrato común y familias supervisadas y no supervisadas |
-| evaluation/ | Métricas y figuras |
+| evaluation/ | Métricas, figuras y exportación de resultados por ejecución |
 | data/ y reports/ | Ejemplos locales y salidas por ejecución |
-| tests/ | Pruebas de ingesta, selección de tarea y diagnóstico |
+| tests/ | Pruebas de ingesta, diagnóstico, modelos, exportación y recorridos en Streamlit |
 
 Con el entorno activado, ejecutar las pruebas con `python -m unittest discover -s tests -v`.
 

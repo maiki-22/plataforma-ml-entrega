@@ -1,255 +1,18 @@
-"""Entrada interactiva de la plataforma de aprendizaje automático."""
+"""Entrada del tablero de análisis de datos."""
 
-from hashlib import sha256
-import json
-from tempfile import mkdtemp
 from pathlib import Path
 
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
 
-from core.eda import UMBRAL_CORRELACION, analizar_tabla
-from evaluation.visualizer import guardar_agrupamiento, guardar_evaluacion_cart, guardar_figuras_eda
-from models.unsupervised.kmeans_engine import agrupar
-from models.supervised.comparacion import catalogo, comparar
-from evaluation.reportes import guardar_configuracion, reportar_comparacion
-from flujo import ejecutar_cart
-from core.loader import cargar_tabla, seleccionar_ruta
+from interfaz.entrada import leer_archivo, mostrar_ruta, seleccionar_archivo
+from interfaz.exploracion import (
+    mostrar_metricas, mostrar_relaciones, mostrar_resumen, mostrar_variables, obtener_diagnostico,
+)
+from interfaz.modelos import mostrar_agrupamiento, mostrar_comparacion, mostrar_modelo
 
 
-DATOS = Path(__file__).resolve().parent / "data"
-DELIMITADORES = {"Automático": None, "Coma": ",", "Punto y coma": ";", "Tabulación": "\t", "Barra vertical": "|"}
-
-
-def obtener_diagnostico(tabla, clave_lectura):
-    """Muestra las tablas y reutiliza las figuras de la lectura actual."""
-    if st.session_state.get("lectura_eda") != clave_lectura:
-        diagnostico = analizar_tabla(tabla)
-        destino = Path(__file__).resolve().parent / "reports"
-        try:
-            figuras = guardar_figuras_eda(tabla, diagnostico, destino)
-        except OSError as error:
-            st.error(f"No se pudieron guardar los gráficos: {error}")
-            return
-        st.session_state["resultado_eda"] = diagnostico, figuras
-        st.session_state["lectura_eda"] = clave_lectura
-    return st.session_state["resultado_eda"]
-
-
-def mostrar_variables(diagnostico) -> None:
-    """Presenta una tabla de diagnóstico por consulta."""
-    st.header("Perfil de variables")
-    vistas = ["Estructura y faltantes"]
-    if not diagnostico.descriptivos.empty:
-        vistas.append("Distribución numérica")
-    vista = st.segmented_control("Consulta", vistas, default=vistas[0], required=True)
-    if vista == vistas[0]:
-        st.dataframe(diagnostico.estructura, column_config={
-            "Faltantes (%)": st.column_config.ProgressColumn("Faltantes (%)", min_value=0, max_value=100, format="%.1f%%")
-        })
-    else:
-        st.dataframe(diagnostico.descriptivos)
-        st.caption("Atípicos fuera de Q1 − 1,5 IQR o Q3 + 1,5 IQR. "
-                   "Varianza baja entre 0 (excluido) y 10⁻⁶. Asimetría marcada si |g₁| > 1.")
-
-
-def mostrar_relaciones(diagnostico, figuras) -> None:
-    """Relaciona cada figura con su matriz y las variables comparadas."""
-    st.header("Relaciones entre variables")
-    if diagnostico.descriptivos.empty:
-        st.write("Se necesitan variables numéricas para calcular relaciones.")
-        return
-    matrices = {"Pearson": diagnostico.pearson, "Spearman": diagnostico.spearman,
-                "Covarianza": diagnostico.covarianza}
-    opciones = list(matrices)
-    if "Dispersión" in figuras:
-        opciones.append("Dispersión")
-    metodo = st.segmented_control("Medida o gráfico", opciones, default="Pearson", required=True)
-    if metodo in figuras:
-        grafico, detalle = st.columns([1.4, 1], gap="large")
-        grafico.image(str(figuras[metodo]), width="stretch", alt=f"Gráfico de {metodo} de las variables numéricas")
-        detalle.download_button("Descargar figura", figuras[metodo].read_bytes(),
-                                file_name=figuras[metodo].name, mime="image/png",
-                                icon=":material/download:", on_click="ignore")
-        if metodo in matrices:
-            detalle.caption("El mapa incluye hasta ocho variables con correlación definida.")
-            with detalle.expander("Matriz completa", expanded=True):
-                st.dataframe(matrices[metodo])
-    else:
-        st.dataframe(matrices[metodo])
-    if metodo == "Pearson":
-        with st.expander("Pares con correlación positiva alta"):
-            altas = diagnostico.pares[diagnostico.pares["Pearson"] > UMBRAL_CORRELACION]
-            if altas.empty:
-                st.caption(f"Ningún par supera {UMBRAL_CORRELACION:g}.".replace(".", ",", 1))
-            else:
-                st.dataframe(altas, hide_index=True)
-    if figuras:
-        st.caption(f"Figuras a 300 DPI en reports/{next(iter(figuras.values())).parent.name}/")
-
-
-def mostrar_ruta(tabla, clave):
-    """Explica la tarea seleccionada para la tabla."""
-    modo = st.radio("Variable objetivo", ["Automática", "Elegir columna", "Sin objetivo"],
-                    horizontal=True, key=f"modo-{clave}")
-    objetivo = st.selectbox("Columna objetivo", tabla.columns) if modo == "Elegir columna" else None
-    try:
-        ruta = seleccionar_ruta(tabla, objetivo, modo == "Sin objetivo")
-    except ValueError as error:
-        st.error(str(error))
-        return
-
-    if ruta.objetivo is None:
-        mensaje = f"{ruta.motivo} Ruta seleccionada: {ruta.tarea}."
-        if modo == "Automática":
-            st.warning(mensaje)
-        else:
-            st.info(mensaje)
-        return None, ruta.tarea
-    else:
-        st.text(f"{ruta.motivo} Columna: {ruta.objetivo}")
-        tareas = ["Clasificación", "Regresión"]
-        tarea = st.selectbox("Tarea supervisada", tareas, index=tareas.index(ruta.tarea),
-                             key=f"tarea-{clave}-{ruta.objetivo}-{ruta.tarea}")
-        st.info(f"Ruta seleccionada: aprendizaje supervisado · {tarea}.")
-        return ruta.objetivo, tarea
-
-
-def mostrar_distribucion(tabla, diagnostico):
-    """Resume una variable en intervalos o en las categorías más frecuentes."""
-    st.subheader("Distribución")
-    nombre = st.selectbox("Variable a explorar", tabla.columns, key="distribucion")
-    valores = tabla[nombre].dropna()
-    if nombre in diagnostico.descriptivos.index:
-        valores = valores[np.isfinite(valores)].astype(float)
-        if valores.empty:
-            st.caption("La variable carece de observaciones finitas.")
-            return
-        frecuencias, limites = np.histogram(valores, bins=min(12, valores.nunique()))
-        datos = pd.DataFrame({"Desde": limites[:-1], "Hasta": limites[1:], "Filas": frecuencias})
-        grafico = alt.Chart(datos).mark_bar().encode(
-            x=alt.X("Desde:Q", bin="binned", title=nombre, scale=alt.Scale(zero=False)),
-            x2="Hasta:Q", y="Filas:Q", tooltip=["Desde:Q", "Hasta:Q", "Filas:Q"])
-    else:
-        if valores.empty:
-            st.caption("La variable carece de observaciones.")
-            return
-        datos = valores.astype(str).value_counts().head(10).rename_axis("Categoría").reset_index(name="Filas")
-        grafico = alt.Chart(datos).mark_bar().encode(
-            y=alt.Y("Categoría:N", sort="-x"), x="Filas:Q", tooltip=["Categoría:N", "Filas:Q"])
-        st.caption("Hasta diez categorías por frecuencia.")
-    st.altair_chart(grafico.properties(height=190), width="stretch", alt=f"Distribución de {nombre}")
-
-
-def mostrar_modelo(tabla, seleccion, lectura):
-    """Ejecuta CART bajo demanda y conserva únicamente el resultado vigente."""
-    objetivo, tarea = seleccion
-    st.header(f"Árbol CART de {tarea.lower()}")
-    profundidad = st.number_input("Profundidad máxima", 1, 30, 3)
-    configuracion = (lectura, objetivo, tarea, profundidad)
-    if st.session_state.get("configuracion_cart") != configuracion:
-        st.session_state.pop("resultado_cart", None)
-    if st.button("Ejecutar análisis", type="primary"):
-        with st.spinner("Entrenando el árbol y evaluando las filas reservadas…"):
-            try:
-                resultado = ejecutar_cart(tabla, objetivo, tarea, profundidad)
-                figura = guardar_evaluacion_cart(resultado.detalle, tarea, DATOS.parent / "reports")
-                guardar_configuracion(figura.parent, lectura, objetivo=objetivo, tarea=tarea, profundidad=profundidad)
-                pd.Series(resultado.metricas, name="Valor").to_csv(
-                    figura.parent / "metricas.csv", index_label="Métrica")
-            except (ValueError, OSError) as error:
-                st.error(str(error))
-                return
-            st.session_state["resultado_cart"] = resultado, figura
-            st.session_state["configuracion_cart"] = configuracion
-    if "resultado_cart" not in st.session_state:
-        return
-    resultado, figura = st.session_state["resultado_cart"]
-    st.caption(f"Entrenamiento: {resultado.entrenamiento} filas · Prueba: {resultado.prueba} · "
-               f"Sin objetivo: {resultado.omitidas} · Semilla: 42")
-    for columna, (nombre, valor) in zip(st.columns(len(resultado.metricas)), resultado.metricas.items()):
-        columna.metric(nombre, f"{valor:.3f}")
-    evaluacion, importancia = st.columns([1.4, 1])
-    evaluacion.image(str(figura), alt="Evaluación del árbol sobre los datos de prueba")
-    with evaluacion.expander("Valores de la evaluación"):
-        st.dataframe(resultado.detalle)
-    importancia.subheader("Importancia de variables")
-    importancia.dataframe(resultado.modelo.importancias(), column_config={
-        "Importancia": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.3f")})
-    importancia.caption(f"Figura a 300 DPI en reports/{figura.parent.name}/{figura.name}")
-
-
-def mostrar_comparacion(tabla, seleccion, lectura):
-    """Ajusta los candidatos elegidos y distingue resultados de CV y prueba."""
-    objetivo, tarea = seleccion
-    nombres = list(catalogo(tarea))
-    candidatos = st.multiselect("Modelos a comparar", nombres, default=nombres, key=f"candidatos-{tarea}")
-    clave = (lectura, objetivo, tarea, tuple(candidatos))
-    if st.session_state.get("clave_comparacion") != clave:
-        st.session_state.pop("comparacion", None)
-    if st.button("Comparar modelos", type="primary", disabled=not candidatos):
-        with st.spinner("Validando hiperparámetros sobre entrenamiento…"):
-            try:
-                resultado = comparar(tabla, objetivo, tarea, candidatos)
-                destino = DATOS.parent / "reports"
-                destino.mkdir(parents=True, exist_ok=True)
-                carpeta = Path(mkdtemp(prefix="comparacion-", dir=destino))
-                reportar_comparacion(resultado, tabla, objetivo, tarea, carpeta)
-                guardar_configuracion(carpeta, lectura, objetivo=objetivo, tarea=tarea, pliegues=resultado.pliegues, modelos=candidatos)
-                resultado.resumen.to_csv(carpeta / "metricas.csv", index=False)
-                (carpeta / "parametros.json").write_text(json.dumps(resultado.parametros, indent=2))
-            except (ValueError, OSError, np.linalg.LinAlgError) as error:
-                st.error(str(error))
-                return
-            st.session_state["comparacion"] = resultado, carpeta
-            st.session_state["clave_comparacion"] = clave
-    if "comparacion" in st.session_state:
-        resultado, carpeta = st.session_state["comparacion"]
-        st.caption(f"{resultado.pliegues} pliegues · {resultado.entrenamiento} filas de entrenamiento · "
-                   f"{resultado.prueba} filas reservadas para la prueba")
-        st.dataframe(resultado.resumen, hide_index=True)
-        modelo = st.selectbox("Detalle del modelo", resultado.resumen["Modelo"])
-        st.write("Hiperparámetros seleccionados")
-        st.json(resultado.parametros[modelo])
-        st.write("Matriz normalizada en prueba" if tarea == "Clasificación" else "Predicciones en prueba")
-        st.dataframe(resultado.detalles[modelo])
-        figuras = sorted(carpeta.glob("*.png"))
-        if figuras:
-            vista = st.selectbox("Reporte gráfico", figuras, format_func=lambda ruta: ruta.stem)
-            st.image(str(vista), alt=vista.stem)
-            st.download_button("Descargar reporte", vista.read_bytes(), file_name=vista.name)
-        st.caption(f"Resultados en reports/{carpeta.name}/")
-
-
-def mostrar_agrupamiento(tabla, lectura):
-    """Compara grupos y presenta el diagnóstico del K elegido."""
-    st.header("Agrupamiento con K-Means")
-    limite = st.number_input("K máximo a evaluar", 2, 20, 8)
-    clave = (lectura, limite)
-    if st.session_state.get("clave_grupos") != clave:
-        st.session_state.pop("grupos", None)
-    if st.button("Evaluar grupos", type="primary"):
-        try:
-            resultado = agrupar(tabla, limite)
-            figuras = guardar_agrupamiento(resultado, DATOS.parent / "reports")
-            guardar_configuracion(figuras["Codo"].parent, lectura, tarea="Agrupamiento", k_maximo=limite, k=resultado.k)
-        except (ValueError, OSError) as error:
-            st.error(str(error))
-            return
-        st.session_state["grupos"] = resultado, figuras
-        st.session_state["clave_grupos"] = clave
-    if "grupos" in st.session_state:
-        resultado, figuras = st.session_state["grupos"]
-        st.metric("Grupos seleccionados", resultado.k)
-        st.caption(resultado.motivo)
-        vista = st.segmented_control("Diagnóstico de grupos", list(figuras), default="Codo", required=True)
-        grafico, detalle = st.columns([1.3, 1])
-        grafico.image(str(figuras[vista]), alt=vista)
-        detalle.dataframe(resultado.metricas, hide_index=True)
-        ruta = figuras[vista].parent / "asignaciones.csv"
-        detalle.download_button("Descargar grupos por fila", ruta.read_bytes(), file_name=ruta.name)
+RAIZ = Path(__file__).resolve().parent
+REPORTES = RAIZ / "reports"
 
 
 def mostrar_inicio() -> None:
@@ -259,49 +22,30 @@ def mostrar_inicio() -> None:
     with st.sidebar:
         st.header("Cuaderno de datos")
         st.subheader("Fuente de datos")
-        origen = st.radio("Origen de los datos", ["Ejemplo local", "Subir archivo"],
-                          horizontal=True, key="origen", label_visibility="collapsed")
-        if origen == "Subir archivo":
-            archivo = st.file_uploader("Selecciona un archivo", type=["csv", "tsv", "parquet"])
-            if archivo is None:
-                principal.title("Abrir un conjunto de datos")
-                principal.write("Selecciona un archivo CSV, TSV o Parquet en el panel lateral.")
-                return
-            nombre, contenido = archivo.name, archivo.getvalue()
-        else:
-            nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv", "iris_petalos.csv", "iris_medidas.tsv"], key="ejemplo")
-            contenido = (DATOS / nombre).read_bytes()
-        clave = sha256(contenido).hexdigest()
-        separador, encabezado = None, True
-        if Path(nombre).suffix.lower() != ".parquet":
-            with st.expander("Opciones de lectura"):
-                opcion = st.selectbox("Delimitador", list(DELIMITADORES), key=f"sep-{clave}")
-                separador = DELIMITADORES[opcion]
-                encabezado = st.checkbox("La primera fila contiene los nombres", True, key=f"cab-{clave}")
+        archivo = seleccionar_archivo(RAIZ / "data")
+        if archivo is None:
+            principal.title("Abrir un conjunto de datos")
+            principal.write("Selecciona un archivo CSV, TSV o Parquet en el panel lateral.")
+            return
+        nombre, contenido = archivo
         try:
-            tabla = cargar_tabla(nombre, contenido, separador, encabezado)
+            tabla, lectura = leer_archivo(nombre, contenido)
         except ValueError as error:
             st.error(str(error))
             return
         st.divider()
         st.subheader("Objetivo de aprendizaje")
-        seleccion = mostrar_ruta(tabla, clave)
+        seleccion = mostrar_ruta(tabla, lectura.huella)
 
     st.title(nombre, anchor=False)
-    lectura = (clave, Path(nombre).suffix.lower(), separador, encabezado)
-    resultado = obtener_diagnostico(tabla, lectura)
+    resultado = obtener_diagnostico(tabla, lectura, REPORTES)
     if resultado is None:
         return
     diagnostico, figuras = resultado
-    filas, columnas, faltantes, atipicos = st.columns(4)
-    filas.metric("Filas", len(tabla))
-    columnas.metric("Columnas", len(tabla.columns))
-    faltantes.metric("Celdas vacías", int(diagnostico.estructura["Faltantes"].sum()))
-    cantidad = int(diagnostico.descriptivos["Atípicos (IQR)"].sum()) if not diagnostico.descriptivos.empty else 0
-    atipicos.metric("Valores atípicos", cantidad, help="Suma de observaciones atípicas por variable numérica según IQR.")
+    mostrar_metricas(tabla, diagnostico)
 
     titulos = ["Resumen", "Variables", "Relaciones"]
-    if seleccion and seleccion[0] is not None:
+    if seleccion and seleccion.objetivo is not None:
         titulos.append("Modelo")
         st.session_state.pop("grupos", None)
     else:
@@ -310,28 +54,22 @@ def mostrar_inicio() -> None:
             titulos.append("Agrupamiento")
     resumen, variables, relaciones, *modelo = st.tabs(titulos)
     with resumen:
-        muestra, distribucion = st.columns([1.2, 1], gap="large")
-        with muestra:
-            st.subheader("Vista previa")
-            st.caption(f"Primeras {min(10, len(tabla))} filas de {len(tabla)}")
-            st.dataframe(tabla.head(10), height="auto", hide_index=True)
-        with distribucion:
-            mostrar_distribucion(tabla, diagnostico)
+        mostrar_resumen(tabla, diagnostico)
     with variables:
         mostrar_variables(diagnostico)
     with relaciones:
         mostrar_relaciones(diagnostico, figuras)
     if modelo:
         with modelo[0]:
-            if seleccion[0] is None:
-                mostrar_agrupamiento(tabla, lectura)
+            if seleccion.objetivo is None:
+                mostrar_agrupamiento(tabla, lectura, REPORTES)
             else:
                 modo = st.segmented_control("Análisis supervisado", ["Árbol CART", "Comparación"],
                                             default="Árbol CART", required=True)
                 if modo == "Árbol CART":
-                    mostrar_modelo(tabla, seleccion, lectura)
+                    mostrar_modelo(tabla, seleccion, lectura, REPORTES)
                 else:
-                    mostrar_comparacion(tabla, seleccion, lectura)
+                    mostrar_comparacion(tabla, seleccion, lectura, REPORTES)
 
 
 if __name__ == "__main__":
