@@ -105,6 +105,13 @@ def mostrar_comparacion(tabla, seleccion, lectura, destino, estado: EstadoVista)
         st.caption(f"Resultados en reports/{carpeta.name}/")
 
 
+@st.fragment
+def _mostrar_figura_grupos(figuras):
+    """Actualiza la figura elegida sin volver a registrar la descarga de asignaciones."""
+    vista = st.segmented_control("Diagnóstico de grupos", list(figuras), default="Codo", required=True)
+    st.image(str(figuras[vista]), alt=vista)
+
+
 def mostrar_agrupamiento(tabla, lectura, destino, estado: EstadoVista):
     """Compara grupos y presenta el diagnóstico del K elegido.
 
@@ -134,10 +141,10 @@ def mostrar_agrupamiento(tabla, lectura, destino, estado: EstadoVista):
         resultado, figuras = estado.publicacion
         st.metric("Grupos seleccionados", resultado.k)
         st.caption(resultado.motivo)
-        vista = st.segmented_control("Diagnóstico de grupos", list(figuras), default="Codo", required=True)
         grafico, detalle = st.columns([1.3, 1])
-        grafico.image(str(figuras[vista]), alt=vista)
+        with grafico:
+            _mostrar_figura_grupos(figuras)
         detalle.dataframe(resultado.metricas, hide_index=True)
-        ruta = figuras[vista].parent / "asignaciones.csv"
+        ruta = figuras["Codo"].with_name("asignaciones.csv")
         detalle.download_button("Descargar grupos por fila", ruta.read_bytes, file_name=ruta.name,
                                 mime="text/csv", on_click="ignore")
