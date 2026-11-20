@@ -1,6 +1,6 @@
 # Plataforma de aprendizaje automático
 
-Aplicación local en Python y Streamlit para cargar tablas, revisar una muestra y seleccionar la ruta de aprendizaje.
+Aplicación local en Python y Streamlit para cargar tablas, explorar sus distribuciones y relaciones, revisar una muestra y seleccionar la ruta de aprendizaje.
 
 ## Ejecutar en local
 
@@ -24,6 +24,14 @@ En Windows, crear el entorno con `py -3.12 -m venv .venv` y activarlo desde Powe
 
 Los dos ejemplos son datos sintéticos creados para comprobar estos recorridos. El primero simula medidas de flores en centímetros y tres clases ficticias. El segundo simula temperatura y humedad en tres condiciones ambientales.
 
+## Diagnóstico exploratorio
+
+Al abrir una tabla, la aplicación resume por columna el tipo, los faltantes y la cardinalidad de las variables no numéricas. Para las numéricas muestra cuartiles, varianza muestral, asimetría y recuento de atípicos según la regla de 1,5 rangos intercuartílicos. Como criterios exploratorios, señala varianza positiva de hasta 10⁻⁶ en la escala original y asimetría absoluta superior a 1. La varianza depende de las unidades de medida.
+
+En **Covarianza y correlaciones** se pueden consultar las matrices completas. Los cálculos bivariados usan las filas con valores finitos en ambas columnas. Una correlación indefinida aparece vacía. La tabla de pares destacados usa Pearson positivo mayor que 0,85. La figura de dispersión selecciona el par con mayor correlación absoluta, que también puede ser negativa.
+
+Los mapas anotados incluyen hasta ocho variables para facilitar la lectura. Las figuras se guardan como PNG a 300 DPI en una carpeta propia dentro de `reports/`. Cambiar el objetivo conserva el diagnóstico de la misma tabla.
+
 ## Organización
 
 | Ubicación | Responsabilidad prevista |
@@ -33,6 +41,6 @@ Los dos ejemplos son datos sintéticos creados para comprobar estos recorridos. 
 | models/ | Contrato común y familias supervisadas y no supervisadas |
 | evaluation/ | Métricas y figuras |
 | data/ y reports/ | Ejemplos locales y salidas por ejecución |
-| tests/ | Pruebas de carga y selección de tarea |
+| tests/ | Pruebas de ingesta, selección de tarea y diagnóstico |
 
 Con el entorno activado, ejecutar las pruebas con `python -m unittest discover -s tests -v`.
