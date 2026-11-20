@@ -121,7 +121,7 @@ def mostrar_distribucion(tabla, diagnostico):
             return
         frecuencias, limites = np.histogram(valores, bins=min(12, valores.nunique()))
         datos = pd.DataFrame({"Desde": limites[:-1], "Hasta": limites[1:], "Filas": frecuencias})
-        grafico = alt.Chart(datos).mark_bar(color="#247883").encode(
+        grafico = alt.Chart(datos).mark_bar().encode(
             x=alt.X("Desde:Q", bin="binned", title=nombre, scale=alt.Scale(zero=False)),
             x2="Hasta:Q", y="Filas:Q", tooltip=["Desde:Q", "Hasta:Q", "Filas:Q"])
     else:
@@ -129,7 +129,7 @@ def mostrar_distribucion(tabla, diagnostico):
             st.caption("La variable carece de observaciones.")
             return
         datos = valores.astype(str).value_counts().head(10).rename_axis("Categoría").reset_index(name="Filas")
-        grafico = alt.Chart(datos).mark_bar(color="#247883").encode(
+        grafico = alt.Chart(datos).mark_bar().encode(
             y=alt.Y("Categoría:N", sort="-x"), x="Filas:Q", tooltip=["Categoría:N", "Filas:Q"])
         st.caption("Hasta diez categorías por frecuencia.")
     st.altair_chart(grafico.properties(height=190), width="stretch", alt=f"Distribución de {nombre}")

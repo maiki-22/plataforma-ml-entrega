@@ -11,6 +11,19 @@ from matplotlib.figure import Figure
 from core.eda import Diagnostico
 
 
+def _preparar_figura(figura):
+    """Aplica el contraste del tablero a los ejes y a la barra de color."""
+    figura.set_facecolor("#212121")
+    for eje in figura.axes:
+        eje.set_facecolor("#292929")
+        eje.tick_params(colors="#D4D4D4")
+        eje.title.set_color("#ECECEC")
+        eje.xaxis.label.set_color("#ECECEC")
+        eje.yaxis.label.set_color("#ECECEC")
+        for borde in eje.spines.values():
+            borde.set_edgecolor("#595959")
+
+
 def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: Path) -> dict[str, Path]:
     """Guarda mapas anotados y la dispersión del par con mayor |r|.
 
@@ -42,6 +55,7 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
         eje.set_title(f"Correlación de {metodo}")
         eje.tick_params(axis="y", labelrotation=0)
         ruta = carpeta / f"{metodo.lower()}.png"
+        _preparar_figura(figura)
         figura.savefig(ruta, dpi=300, bbox_inches="tight")
         figuras[metodo] = ruta
 
@@ -52,8 +66,9 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
     puntos = tabla[[primera, segunda]].replace([np.inf, -np.inf], np.nan).dropna()
     figura = Figure(figsize=(7, 4), layout="constrained")
     eje = figura.subplots()
-    eje.scatter(puntos[primera], puntos[segunda], alpha=0.65)
+    eje.scatter(puntos[primera], puntos[segunda], color="#D4D4D4", alpha=0.75)
     eje.set(xlabel=primera, ylabel=segunda, title="Dispersión del par con mayor |r|")
+    _preparar_figura(figura)
     ruta = carpeta / "dispersion.png"
     figura.savefig(ruta, dpi=300, bbox_inches="tight")
     figuras["Dispersión"] = ruta

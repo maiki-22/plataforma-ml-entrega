@@ -1,12 +1,17 @@
 [theme]
-base = "light"
-primaryColor = "#176773"
-backgroundColor = "#FBFDFC"
-secondaryBackgroundColor = "#E8F2F1"
-textColor = "#17343B"
-borderColor = "#BED2D2"
-dataframeHeaderBackgroundColor = "#DFEDEC"
-headingFont = "Georgia, serif"
-headingFontWeights = [500, 500, 600]
-headingFontSizes = ["2.65rem", "1.85rem", "1.4rem"]
-baseRadius = "0.4rem"
+base = "dark"
+backgroundColor = "#212121"
+secondaryBackgroundColor = "#303030"
+primaryColor = "#D4D4D4"
+textColor = "#ECECEC"
+borderColor = "#494949"
+dataframeHeaderBackgroundColor = "#303030"
+font = "system-ui, Arial, sans-serif"
+headingFontWeights = [600, 600, 600]
+headingFontSizes = ["2.2rem", "1.55rem", "1.15rem"]
+baseRadius = "0.6rem"
+chartCategoricalColors = ["#B8B8B8", "#929292", "#DADADA"]
+
+[theme.sidebar]
+backgroundColor = "#181818"
+secondaryBackgroundColor = "#292929"
