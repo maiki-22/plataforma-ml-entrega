@@ -1,0 +1,12 @@
+[theme]
+base = "light"
+primaryColor = "#176773"
+backgroundColor = "#FBFDFC"
+secondaryBackgroundColor = "#E8F2F1"
+textColor = "#17343B"
+borderColor = "#BED2D2"
+dataframeHeaderBackgroundColor = "#DFEDEC"
+headingFont = "Georgia, serif"
+headingFontWeights = [500, 500, 600]
+headingFontSizes = ["2.65rem", "1.85rem", "1.4rem"]
+baseRadius = "0.4rem"

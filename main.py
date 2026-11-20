@@ -14,9 +14,8 @@ DATOS = Path(__file__).resolve().parent / "data"
 DELIMITADORES = {"Automático": None, "Coma": ",", "Punto y coma": ";", "Tabulación": "\t", "Barra vertical": "|"}
 
 
-def mostrar_diagnostico(tabla, clave_lectura) -> None:
+def obtener_diagnostico(tabla, clave_lectura):
     """Muestra las tablas y reutiliza las figuras de la lectura actual."""
-    st.subheader("Diagnóstico exploratorio")
     if st.session_state.get("lectura_eda") != clave_lectura:
         diagnostico = analizar_tabla(tabla)
         destino = Path(__file__).resolve().parent / "reports"
@@ -27,31 +26,52 @@ def mostrar_diagnostico(tabla, clave_lectura) -> None:
             return
         st.session_state["resultado_eda"] = diagnostico, figuras
         st.session_state["lectura_eda"] = clave_lectura
-    diagnostico, figuras = st.session_state["resultado_eda"]
-    st.dataframe(diagnostico.estructura)
-    if diagnostico.descriptivos.empty:
-        st.caption("La tabla contiene únicamente variables no numéricas.")
-        return
-    with st.expander("Distribución de las variables numéricas", expanded=True):
+    return st.session_state["resultado_eda"]
+
+
+def mostrar_variables(diagnostico) -> None:
+    """Presenta una tabla de diagnóstico por consulta."""
+    st.header("Perfil de variables")
+    vistas = ["Estructura y faltantes"]
+    if not diagnostico.descriptivos.empty:
+        vistas.append("Distribución numérica")
+    vista = st.radio("Consulta", vistas, horizontal=True)
+    if vista == vistas[0]:
+        st.dataframe(diagnostico.estructura)
+    else:
         st.dataframe(diagnostico.descriptivos)
         st.caption("Atípicos fuera de Q1 − 1,5 IQR o Q3 + 1,5 IQR. "
                    "Varianza baja entre 0 (excluido) y 10⁻⁶. Asimetría marcada si |g₁| > 1.")
-    with st.expander("Covarianza y correlaciones"):
-        for titulo, matriz in [("Covarianza", diagnostico.covarianza), ("Pearson", diagnostico.pearson),
-                               ("Spearman", diagnostico.spearman)]:
-            st.write(titulo)
-            st.dataframe(matriz)
-        st.write("Pares con correlación positiva alta")
-        altas = diagnostico.pares[diagnostico.pares["Pearson"] > UMBRAL_CORRELACION]
-        if altas.empty:
-            st.caption("Ningún par supera el umbral de Pearson.")
-        else:
-            st.dataframe(altas, hide_index=True)
+
+
+def mostrar_relaciones(diagnostico, figuras) -> None:
+    """Relaciona cada figura con su matriz y las variables comparadas."""
+    st.header("Relaciones entre variables")
+    if diagnostico.descriptivos.empty:
+        st.write("Se necesitan variables numéricas para calcular relaciones.")
+        return
+    matrices = {"Pearson": diagnostico.pearson, "Spearman": diagnostico.spearman,
+                "Covarianza": diagnostico.covarianza}
+    opciones = list(matrices)
+    if "Dispersión" in figuras:
+        opciones.append("Dispersión")
+    metodo = st.radio("Medida o gráfico", opciones, horizontal=True)
+    if metodo in figuras:
+        st.image(str(figuras[metodo]), width=560, alt=f"Gráfico de {metodo} de las variables numéricas")
+        if metodo in matrices:
+            st.caption("El mapa incluye hasta ocho variables con correlación definida.")
+            with st.expander("Matriz completa"):
+                st.dataframe(matrices[metodo])
+    else:
+        st.dataframe(matrices[metodo])
+    if metodo == "Pearson":
+        with st.expander("Pares con correlación positiva alta"):
+            altas = diagnostico.pares[diagnostico.pares["Pearson"] > UMBRAL_CORRELACION]
+            if altas.empty:
+                st.caption("Ningún par supera 0,85.")
+            else:
+                st.dataframe(altas, hide_index=True)
     if figuras:
-        st.caption("Los mapas muestran hasta ocho variables con correlación definida. "
-                   "Las matrices completas están disponibles arriba.")
-        for titulo, ruta in figuras.items():
-            st.image(str(ruta), caption=titulo)
         st.caption(f"Figuras a 300 DPI en reports/{next(iter(figuras.values())).parent.name}/")
 
 
@@ -82,23 +102,28 @@ def mostrar_ruta(tabla, clave) -> None:
 
 def mostrar_inicio() -> None:
     """Presenta la tabla y permite revisar el objetivo y la tarea."""
-    st.set_page_config(page_title="Análisis de datos tabulares", page_icon="📊")
-    st.title("Análisis de datos tabulares")
-    origen = st.radio("Origen de los datos", ["Subir archivo", "Ejemplo local"], horizontal=True)
-    if origen == "Subir archivo":
-        archivo = st.file_uploader("Selecciona un archivo", type=["csv", "tsv", "parquet"])
-        if archivo is None:
-            return
-        nombre, contenido = archivo.name, archivo.getvalue()
-    else:
-        nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv"])
-        contenido = (DATOS / nombre).read_bytes()
+    st.set_page_config(page_title="Cuaderno de datos", page_icon=":material/table_chart:")
+    st.title("Cuaderno de datos")
+    datos, objetivo, variables, relaciones = st.tabs(["Datos", "Objetivo", "Variables", "Relaciones"])
+    with datos:
+        st.header("Conjunto de datos")
+        fuente, seleccion = st.columns([1, 1.4], vertical_alignment="top")
+        origen = fuente.radio("Origen de los datos", ["Ejemplo local", "Subir archivo"], horizontal=True)
+        if origen == "Subir archivo":
+            archivo = seleccion.file_uploader("Selecciona un archivo", type=["csv", "tsv", "parquet"])
+            if archivo is None:
+                for panel in (objetivo, variables, relaciones):
+                    panel.write("Selecciona un archivo en Datos para continuar.")
+                return
+            nombre, contenido = archivo.name, archivo.getvalue()
+        else:
+            nombre = seleccion.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv"])
+            contenido = (DATOS / nombre).read_bytes()
 
-    st.text(f"Archivo seleccionado: {nombre}")
     clave = sha256(contenido).hexdigest()
     separador, encabezado = None, True
     if Path(nombre).suffix.lower() != ".parquet":
-        with st.expander("Opciones de lectura"):
+        with datos.expander("Opciones de lectura"):
             opcion = st.selectbox("Delimitador", list(DELIMITADORES), key=f"sep-{clave}")
             separador = DELIMITADORES[opcion]
             encabezado = st.checkbox("La primera fila contiene los nombres", True, key=f"cab-{clave}")
@@ -106,14 +131,29 @@ def mostrar_inicio() -> None:
     try:
         tabla = cargar_tabla(nombre, contenido, separador, encabezado)
     except ValueError as error:
-        st.error(str(error))
+        datos.error(str(error))
+        for panel in (objetivo, variables, relaciones):
+            panel.write("Revisa el archivo y sus opciones de lectura en Datos.")
         return
 
-    st.subheader("Vista previa")
-    st.caption(f"{len(tabla)} filas · {len(tabla.columns)} columnas · Primeras 10 filas")
-    st.dataframe(tabla.head(10), hide_index=True)
-    mostrar_ruta(tabla, clave)
-    mostrar_diagnostico(tabla, (clave, Path(nombre).suffix.lower(), separador, encabezado))
+    contexto = f"{nombre} · {len(tabla)} filas · {len(tabla.columns)} columnas"
+    with datos:
+        st.subheader("Vista previa")
+        st.caption(f"{contexto} · Primeras 10 filas")
+        st.dataframe(tabla.head(10), height=265, hide_index=True)
+    with objetivo:
+        st.header("Objetivo de aprendizaje")
+        st.caption(contexto)
+        mostrar_ruta(tabla, clave)
+    resultado = obtener_diagnostico(tabla, (clave, Path(nombre).suffix.lower(), separador, encabezado))
+    if resultado is not None:
+        diagnostico, figuras = resultado
+        with variables:
+            st.caption(contexto)
+            mostrar_variables(diagnostico)
+        with relaciones:
+            st.caption(contexto)
+            mostrar_relaciones(diagnostico, figuras)
 
 
 if __name__ == "__main__":
