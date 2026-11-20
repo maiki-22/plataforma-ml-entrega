@@ -89,3 +89,12 @@ La comparación exporta métricas y parámetros elegidos dentro de `reports/comp
 **Modelo → Comparación** exporta curvas ROC y precisión-recall por clase (uno contra el resto) y microagregadas. El AUC se guarda en `auc.csv` y los puntos en `curvas_por_clase.csv`. Las curvas usan puntajes por clase: en DANN son proporciones de votos y en LVQ1 son cercanías relativas a los prototipos. El modelo con mayor puntuación de validación aporta las curvas de aprendizaje y, si existen exactamente dos predictores numéricos con variación, la superficie de decisión en unidades originales. La curva de aprendizaje muestra los tamaños factibles y mantiene fijos los hiperparámetros seleccionados.
 
 En regresión, las figuras incluyen la distribución de residuales y la calibración lineal de las predicciones sobre los valores reales de prueba. Con al menos tres observaciones y variación del objetivo, el sombreado representa el intervalo puntual de confianza del 95 % para la media de esa recta bajo el supuesto de errores independientes, homocedásticos y aproximadamente normales. Para repetir una ejecución, comprobar en `configuracion.json` la huella SHA-256 del archivo, las opciones de lectura, la tarea, la semilla y la configuración del modelo.
+
+## Informe y demostración
+
+El [informe técnico](docs/entrega/Informe_tecnico.pdf) documenta el diseño, el diagrama de clases, la evaluación y sus límites. La [presentación en PDF](docs/entrega/Defensa.pdf) acompaña las dos ejecuciones en vivo.
+
+1. Abrir **iris_petalos.csv** y mantener el objetivo automático `clase`. En **Modelo**, ejecutar CART con profundidad 3. Examinar la matriz normalizada y después abrir **Comparación** para consultar las curvas.
+2. Abrir **iris_medidas.tsv**. En **Agrupamiento**, evaluar hasta K=8 y comparar la curva del codo con las siluetas. El archivo contiene las cuatro medidas de las mismas flores y omite la especie.
+
+Ambos archivos derivan de Iris (R. A. Fisher, 1936), en la versión de scikit-learn incluida con el proyecto mediante sus dependencias. Los encabezados están en español y las medidas en centímetros. La vista etiquetada selecciona largo y ancho del pétalo; la vista sin etiquetas conserva también largo y ancho del sépalo. [Descripción y procedencia en scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html) · [Datos originales en UCI](https://archive.ics.uci.edu/dataset/53/iris).

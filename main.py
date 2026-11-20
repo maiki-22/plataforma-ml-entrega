@@ -83,7 +83,7 @@ def mostrar_relaciones(diagnostico, figuras) -> None:
         with st.expander("Pares con correlación positiva alta"):
             altas = diagnostico.pares[diagnostico.pares["Pearson"] > UMBRAL_CORRELACION]
             if altas.empty:
-                st.caption("Ningún par supera 0,85.")
+                st.caption(f"Ningún par supera {UMBRAL_CORRELACION:g}.".replace(".", ",", 1))
             else:
                 st.dataframe(altas, hide_index=True)
     if figuras:
@@ -269,7 +269,7 @@ def mostrar_inicio() -> None:
                 return
             nombre, contenido = archivo.name, archivo.getvalue()
         else:
-            nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv"], key="ejemplo")
+            nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv", "iris_petalos.csv", "iris_medidas.tsv"], key="ejemplo")
             contenido = (DATOS / nombre).read_bytes()
         clave = sha256(contenido).hexdigest()
         separador, encabezado = None, True
