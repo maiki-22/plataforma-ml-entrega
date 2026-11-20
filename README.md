@@ -17,18 +17,20 @@ En Windows, crear el entorno con `py -3.12 -m venv .venv` y activarlo desde Powe
 
 ## Comprobar la carga y el enrutamiento
 
-1. Abrir la dirección local que indica Streamlit. La pestaña **Datos** comienza con un ejemplo local. En `flores.csv` se muestran 36 filas, tres columnas y la ruta de clasificación por la columna `clase`.
+1. Abrir la dirección local que indica Streamlit. El panel lateral comienza con un ejemplo local. En `flores.csv` se muestran 36 filas, tres columnas y la ruta de clasificación por la columna `clase`.
 2. Cambiar a `mediciones.tsv`. Las dos variables son mediciones sin etiqueta. La aplicación explica la ausencia de objetivo y selecciona agrupamiento con K-Means.
 3. Elegir **Subir archivo** para probar CSV, TSV o Parquet. Para texto se admite UTF-8 o Latin-1. En **Opciones de lectura** se puede corregir el delimitador y desmarcar el encabezado para asignar nombres como `columna_1`.
-4. En **Objetivo**, usar **Elegir columna** para indicar el objetivo. Si un código numérico representa categorías, seleccionar **Clasificación**. **Sin objetivo** permite elegir agrupamiento explícitamente.
+4. En **Objetivo de aprendizaje**, usar **Elegir columna** para indicar el objetivo. Si un código numérico representa categorías, seleccionar **Clasificación**. **Sin objetivo** permite elegir agrupamiento explícitamente.
 
 Los dos ejemplos son datos sintéticos creados para comprobar estos recorridos. El primero simula medidas de flores en centímetros y tres clases ficticias. El segundo simula temperatura y humedad en tres condiciones ambientales.
+
+El tablero muestra filas, columnas, celdas vacías y valores atípicos del archivo activo. En **Resumen**, la vista previa se puede consultar junto a la distribución de una variable. Seleccionar otra columna actualiza el histograma o las frecuencias por categoría.
 
 ## Diagnóstico exploratorio
 
 En **Variables**, la aplicación resume por columna el tipo, los faltantes y la cardinalidad de las variables no numéricas. Para las numéricas muestra cuartiles, varianza muestral, asimetría y recuento de atípicos según la regla de 1,5 rangos intercuartílicos. Como criterios exploratorios, señala varianza positiva de hasta 10⁻⁶ en la escala original y asimetría absoluta superior a 1. La varianza depende de las unidades de medida.
 
-En **Relaciones**, elegir Pearson, Spearman, Covarianza o, cuando existan pares válidos, Dispersión. Los mapas incluyen un desplegable con la matriz completa. Los cálculos bivariados usan las filas con valores finitos en ambas columnas. Una correlación indefinida aparece vacía. La tabla de pares destacados usa Pearson positivo mayor que 0,85. La figura de dispersión selecciona el par con mayor correlación absoluta, que también puede ser negativa.
+En **Relaciones**, elegir Pearson, Spearman, Covarianza o, cuando existan pares válidos, Dispersión. Junto a cada mapa están la matriz completa y la descarga del PNG. Los cálculos bivariados usan las filas con valores finitos en ambas columnas. Una correlación indefinida aparece vacía. La tabla de pares destacados usa Pearson positivo mayor que 0,85. La figura de dispersión selecciona el par con mayor correlación absoluta, que también puede ser negativa.
 
 Los mapas anotados incluyen hasta ocho variables para facilitar la lectura. Las figuras se guardan como PNG a 300 DPI en una carpeta propia dentro de `reports/`. Cambiar el objetivo conserva el diagnóstico de la misma tabla.
 

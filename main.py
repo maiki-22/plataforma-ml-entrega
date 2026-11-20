@@ -3,6 +3,9 @@
 from hashlib import sha256
 from pathlib import Path
 
+import altair as alt
+import numpy as np
+import pandas as pd
 import streamlit as st
 
 from core.eda import UMBRAL_CORRELACION, analizar_tabla
@@ -35,9 +38,11 @@ def mostrar_variables(diagnostico) -> None:
     vistas = ["Estructura y faltantes"]
     if not diagnostico.descriptivos.empty:
         vistas.append("Distribución numérica")
-    vista = st.radio("Consulta", vistas, horizontal=True)
+    vista = st.segmented_control("Consulta", vistas, default=vistas[0], required=True)
     if vista == vistas[0]:
-        st.dataframe(diagnostico.estructura)
+        st.dataframe(diagnostico.estructura, column_config={
+            "Faltantes (%)": st.column_config.ProgressColumn("Faltantes (%)", min_value=0, max_value=100, format="%.1f%%")
+        })
     else:
         st.dataframe(diagnostico.descriptivos)
         st.caption("Atípicos fuera de Q1 − 1,5 IQR o Q3 + 1,5 IQR. "
@@ -55,12 +60,16 @@ def mostrar_relaciones(diagnostico, figuras) -> None:
     opciones = list(matrices)
     if "Dispersión" in figuras:
         opciones.append("Dispersión")
-    metodo = st.radio("Medida o gráfico", opciones, horizontal=True)
+    metodo = st.segmented_control("Medida o gráfico", opciones, default="Pearson", required=True)
     if metodo in figuras:
-        st.image(str(figuras[metodo]), width=560, alt=f"Gráfico de {metodo} de las variables numéricas")
+        grafico, detalle = st.columns([1.4, 1], gap="large")
+        grafico.image(str(figuras[metodo]), width="stretch", alt=f"Gráfico de {metodo} de las variables numéricas")
+        detalle.download_button("Descargar figura", figuras[metodo].read_bytes(),
+                                file_name=figuras[metodo].name, mime="image/png",
+                                icon=":material/download:", on_click="ignore")
         if metodo in matrices:
-            st.caption("El mapa incluye hasta ocho variables con correlación definida.")
-            with st.expander("Matriz completa"):
+            detalle.caption("El mapa incluye hasta ocho variables con correlación definida.")
+            with detalle.expander("Matriz completa", expanded=True):
                 st.dataframe(matrices[metodo])
     else:
         st.dataframe(matrices[metodo])
@@ -100,60 +109,92 @@ def mostrar_ruta(tabla, clave) -> None:
         st.info(f"Ruta seleccionada: aprendizaje supervisado · {tarea}.")
 
 
+def mostrar_distribucion(tabla, diagnostico):
+    """Resume una variable en intervalos o en las categorías más frecuentes."""
+    st.subheader("Distribución")
+    nombre = st.selectbox("Variable a explorar", tabla.columns, key="distribucion")
+    valores = tabla[nombre].dropna()
+    if nombre in diagnostico.descriptivos.index:
+        valores = valores[np.isfinite(valores)].astype(float)
+        if valores.empty:
+            st.caption("La variable carece de observaciones finitas.")
+            return
+        frecuencias, limites = np.histogram(valores, bins=min(12, valores.nunique()))
+        datos = pd.DataFrame({"Desde": limites[:-1], "Hasta": limites[1:], "Filas": frecuencias})
+        grafico = alt.Chart(datos).mark_bar(color="#247883").encode(
+            x=alt.X("Desde:Q", bin="binned", title=nombre, scale=alt.Scale(zero=False)),
+            x2="Hasta:Q", y="Filas:Q", tooltip=["Desde:Q", "Hasta:Q", "Filas:Q"])
+    else:
+        if valores.empty:
+            st.caption("La variable carece de observaciones.")
+            return
+        datos = valores.astype(str).value_counts().head(10).rename_axis("Categoría").reset_index(name="Filas")
+        grafico = alt.Chart(datos).mark_bar(color="#247883").encode(
+            y=alt.Y("Categoría:N", sort="-x"), x="Filas:Q", tooltip=["Categoría:N", "Filas:Q"])
+        st.caption("Hasta diez categorías por frecuencia.")
+    st.altair_chart(grafico.properties(height=190), width="stretch", alt=f"Distribución de {nombre}")
+
+
 def mostrar_inicio() -> None:
-    """Presenta la tabla y permite revisar el objetivo y la tarea."""
-    st.set_page_config(page_title="Cuaderno de datos", page_icon=":material/table_chart:")
-    st.title("Cuaderno de datos")
-    datos, objetivo, variables, relaciones = st.tabs(["Datos", "Objetivo", "Variables", "Relaciones"])
-    with datos:
-        st.header("Conjunto de datos")
-        fuente, seleccion = st.columns([1, 1.4], vertical_alignment="top")
-        origen = fuente.radio("Origen de los datos", ["Ejemplo local", "Subir archivo"], horizontal=True)
+    """Organiza los controles de sesión y el tablero del archivo activo."""
+    st.set_page_config(page_title="Cuaderno de datos", page_icon=":material/table_chart:", layout="wide")
+    principal = st.container()
+    with st.sidebar:
+        st.header("Cuaderno de datos")
+        st.subheader("Fuente de datos")
+        origen = st.radio("Origen de los datos", ["Ejemplo local", "Subir archivo"],
+                          horizontal=True, key="origen", label_visibility="collapsed")
         if origen == "Subir archivo":
-            archivo = seleccion.file_uploader("Selecciona un archivo", type=["csv", "tsv", "parquet"])
+            archivo = st.file_uploader("Selecciona un archivo", type=["csv", "tsv", "parquet"])
             if archivo is None:
-                for panel in (objetivo, variables, relaciones):
-                    panel.write("Selecciona un archivo en Datos para continuar.")
+                principal.title("Abrir un conjunto de datos")
+                principal.write("Selecciona un archivo CSV, TSV o Parquet en el panel lateral.")
                 return
             nombre, contenido = archivo.name, archivo.getvalue()
         else:
-            nombre = seleccion.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv"])
+            nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv"], key="ejemplo")
             contenido = (DATOS / nombre).read_bytes()
-
-    clave = sha256(contenido).hexdigest()
-    separador, encabezado = None, True
-    if Path(nombre).suffix.lower() != ".parquet":
-        with datos.expander("Opciones de lectura"):
-            opcion = st.selectbox("Delimitador", list(DELIMITADORES), key=f"sep-{clave}")
-            separador = DELIMITADORES[opcion]
-            encabezado = st.checkbox("La primera fila contiene los nombres", True, key=f"cab-{clave}")
-
-    try:
-        tabla = cargar_tabla(nombre, contenido, separador, encabezado)
-    except ValueError as error:
-        datos.error(str(error))
-        for panel in (objetivo, variables, relaciones):
-            panel.write("Revisa el archivo y sus opciones de lectura en Datos.")
-        return
-
-    contexto = f"{nombre} · {len(tabla)} filas · {len(tabla.columns)} columnas"
-    with datos:
-        st.subheader("Vista previa")
-        st.caption(f"{contexto} · Primeras 10 filas")
-        st.dataframe(tabla.head(10), height=265, hide_index=True)
-    with objetivo:
-        st.header("Objetivo de aprendizaje")
-        st.caption(contexto)
+        clave = sha256(contenido).hexdigest()
+        separador, encabezado = None, True
+        if Path(nombre).suffix.lower() != ".parquet":
+            with st.expander("Opciones de lectura"):
+                opcion = st.selectbox("Delimitador", list(DELIMITADORES), key=f"sep-{clave}")
+                separador = DELIMITADORES[opcion]
+                encabezado = st.checkbox("La primera fila contiene los nombres", True, key=f"cab-{clave}")
+        try:
+            tabla = cargar_tabla(nombre, contenido, separador, encabezado)
+        except ValueError as error:
+            st.error(str(error))
+            return
+        st.divider()
+        st.subheader("Objetivo de aprendizaje")
         mostrar_ruta(tabla, clave)
+
+    st.title(nombre, anchor=False)
     resultado = obtener_diagnostico(tabla, (clave, Path(nombre).suffix.lower(), separador, encabezado))
-    if resultado is not None:
-        diagnostico, figuras = resultado
-        with variables:
-            st.caption(contexto)
-            mostrar_variables(diagnostico)
-        with relaciones:
-            st.caption(contexto)
-            mostrar_relaciones(diagnostico, figuras)
+    if resultado is None:
+        return
+    diagnostico, figuras = resultado
+    filas, columnas, faltantes, atipicos = st.columns(4)
+    filas.metric("Filas", len(tabla))
+    columnas.metric("Columnas", len(tabla.columns))
+    faltantes.metric("Celdas vacías", int(diagnostico.estructura["Faltantes"].sum()))
+    cantidad = int(diagnostico.descriptivos["Atípicos (IQR)"].sum()) if not diagnostico.descriptivos.empty else 0
+    atipicos.metric("Valores atípicos", cantidad, help="Suma de observaciones atípicas por variable numérica según IQR.")
+
+    resumen, variables, relaciones = st.tabs(["Resumen", "Variables", "Relaciones"])
+    with resumen:
+        muestra, distribucion = st.columns([1.2, 1], gap="large")
+        with muestra:
+            st.subheader("Vista previa")
+            st.caption(f"Primeras {min(10, len(tabla))} filas de {len(tabla)}")
+            st.dataframe(tabla.head(10), height="auto", hide_index=True)
+        with distribucion:
+            mostrar_distribucion(tabla, diagnostico)
+    with variables:
+        mostrar_variables(diagnostico)
+    with relaciones:
+        mostrar_relaciones(diagnostico, figuras)
 
 
 if __name__ == "__main__":
