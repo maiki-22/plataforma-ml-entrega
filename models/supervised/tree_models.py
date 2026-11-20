@@ -1,6 +1,7 @@
 """Árboles CART de clasificación y regresión."""
 
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
@@ -56,3 +57,13 @@ class ModeloCART(ModeloBase):
                     nombres.extend([columna] * len(categorias))
         valores = pd.Series(self.arbol.feature_importances_, index=nombres, name="Importancia")
         return valores.groupby(level=0, sort=False).sum().sort_values(ascending=False)
+
+
+def modelos_de_arbol(tarea):
+    """Candidatos de profundidad para árboles y bosques reproducibles."""
+    if tarea == "Clasificación":
+        arbol, bosque = DecisionTreeClassifier, RandomForestClassifier
+    else:
+        arbol, bosque = DecisionTreeRegressor, RandomForestRegressor
+    return {"CART": (arbol(random_state=42), {"max_depth": [2, 4, None]}),
+            "Random Forest": (bosque(n_estimators=60, random_state=42), {"max_depth": [3, None]})}

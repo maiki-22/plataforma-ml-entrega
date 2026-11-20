@@ -1,6 +1,8 @@
 """Entrada interactiva de la plataforma de aprendizaje automático."""
 
 from hashlib import sha256
+import json
+from tempfile import mkdtemp
 from pathlib import Path
 
 import altair as alt
@@ -9,9 +11,9 @@ import pandas as pd
 import streamlit as st
 
 from core.eda import UMBRAL_CORRELACION, analizar_tabla
-from evaluation.visualizer import guardar_evaluacion_cart, guardar_figuras_eda
+from evaluation.visualizer import guardar_agrupamiento, guardar_evaluacion_cart, guardar_figuras_eda
 from models.unsupervised.kmeans_engine import agrupar
-from evaluation.visualizer import guardar_agrupamiento
+from models.supervised.comparacion import catalogo, comparar
 from flujo import ejecutar_cart
 from core.loader import cargar_tabla, seleccionar_ruta
 
@@ -177,6 +179,41 @@ def mostrar_modelo(tabla, seleccion, lectura):
     importancia.caption(f"Figura a 300 DPI en reports/{figura.parent.name}/{figura.name}")
 
 
+def mostrar_comparacion(tabla, seleccion, lectura):
+    """Ajusta los candidatos elegidos y distingue resultados de CV y prueba."""
+    objetivo, tarea = seleccion
+    nombres = list(catalogo(tarea))
+    candidatos = st.multiselect("Modelos a comparar", nombres, default=nombres, key=f"candidatos-{tarea}")
+    clave = (lectura, objetivo, tarea, tuple(candidatos))
+    if st.session_state.get("clave_comparacion") != clave:
+        st.session_state.pop("comparacion", None)
+    if st.button("Comparar modelos", type="primary", disabled=not candidatos):
+        with st.spinner("Validando hiperparámetros sobre entrenamiento…"):
+            try:
+                resultado = comparar(tabla, objetivo, tarea, candidatos)
+                destino = DATOS.parent / "reports"
+                destino.mkdir(parents=True, exist_ok=True)
+                carpeta = Path(mkdtemp(prefix="comparacion-", dir=destino))
+                resultado.resumen.to_csv(carpeta / "metricas.csv", index=False)
+                (carpeta / "parametros.json").write_text(json.dumps(resultado.parametros, indent=2))
+            except (ValueError, OSError, np.linalg.LinAlgError) as error:
+                st.error(str(error))
+                return
+            st.session_state["comparacion"] = resultado, carpeta
+            st.session_state["clave_comparacion"] = clave
+    if "comparacion" in st.session_state:
+        resultado, carpeta = st.session_state["comparacion"]
+        st.caption(f"{resultado.pliegues} pliegues · {resultado.entrenamiento} filas de entrenamiento · "
+                   f"{resultado.prueba} filas reservadas para la prueba")
+        st.dataframe(resultado.resumen, hide_index=True)
+        modelo = st.selectbox("Detalle del modelo", resultado.resumen["Modelo"])
+        st.write("Hiperparámetros seleccionados")
+        st.json(resultado.parametros[modelo])
+        st.write("Matriz normalizada en prueba" if tarea == "Clasificación" else "Predicciones en prueba")
+        st.dataframe(resultado.detalles[modelo])
+        st.caption(f"Resultados en reports/{carpeta.name}/")
+
+
 def mostrar_agrupamiento(tabla, lectura):
     """Compara grupos y presenta el diagnóstico del K elegido."""
     st.header("Agrupamiento con K-Means")
@@ -279,7 +316,12 @@ def mostrar_inicio() -> None:
             if seleccion[0] is None:
                 mostrar_agrupamiento(tabla, lectura)
             else:
-                mostrar_modelo(tabla, seleccion, lectura)
+                modo = st.segmented_control("Análisis supervisado", ["Árbol CART", "Comparación"],
+                                            default="Árbol CART", required=True)
+                if modo == "Árbol CART":
+                    mostrar_modelo(tabla, seleccion, lectura)
+                else:
+                    mostrar_comparacion(tabla, seleccion, lectura)
 
 
 if __name__ == "__main__":

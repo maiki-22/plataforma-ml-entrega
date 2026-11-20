@@ -65,3 +65,21 @@ La tabla de importancias suma los indicadores categóricos correspondientes a un
 ## Agrupamiento
 
 Abrir `mediciones.tsv` y pulsar **Agrupamiento → Evaluar grupos**. Se prueban inicializaciones aleatoria y K-Means++ (cinco reinicios cada una) sobre variables preparadas y numéricas estandarizadas. La curva usa la menor inercia por K y parte de K=1 como referencia. Se selecciona la mayor distancia perpendicular a la cuerda normalizada. Por debajo de 0,05 se usa la mayor silueta. CHI y DBI complementan la comparación. Las etiquetas, la silueta individual y las coordenadas PCA de cada fila se exportan junto con las figuras. Para una única dimensión la segunda coordenada se dibuja en cero.
+
+## Comparar modelos supervisados
+
+En **Modelo → Comparación**, seleccionar las familias y pulsar **Comparar modelos**. Se usa la misma reserva que en CART. Cada candidato ajusta el preprocesamiento exclusivamente en la parte de entrenamiento de cada pliegue. Una búsqueda en rejilla compara hasta cinco pliegues reproducibles, estratificados en clasificación. Se optimiza la exactitud en clasificación y el MAE en regresión. El mejor ajuste de cada familia se reentrena con todo el entrenamiento y se evalúa en las mismas filas de prueba. La columna CV corresponde a validación y las demás métricas a prueba.
+
+| Familia | Candidatos de ajuste |
+|---|---|
+| Logística, Ridge y Lasso | Regularización mediante C o alpha |
+| CART y Random Forest | Profundidad máxima |
+| k-NN | Vecinos euclidianos con voto o media ponderados por distancia |
+| LVQ1 | Tasa inicial de atracción o repulsión de prototipos por clase |
+| DANN | Número de vecinos bajo la métrica discriminante local regularizada |
+| MARS | Límite de términos aditivos de bisagra con construcción progresiva y poda |
+| GAM | Penalización de suavidad de los splines aditivos |
+
+LVQ1, DANN y logística se ofrecen para clasificación. Ridge, Lasso, MARS y GAM se ofrecen para regresión. CART, Random Forest y k-NN admiten ambas tareas. Los datos sintéticos sirven para verificar los recorridos y su tamaño limita la interpretación de diferencias de rendimiento.
+
+La comparación exporta métricas y parámetros elegidos dentro de `reports/comparacion-*/`. Para revisar el fundamento de los métodos especializados, consultar el [artículo de DANN](https://hastie.su.domains/Papers/dann_IEEE.pdf), la [implementación de MARS](https://pypi.org/project/mars-earth/) y la [referencia de GAM](https://pygam.readthedocs.io/en/latest/reference/_autosummary/pygam.pygam.LinearGAM.html).

@@ -44,6 +44,15 @@ def ejecutar_cart(tabla, objetivo, tarea, profundidad=3, semilla=42):
     ResultadoCART
         Modelo ajustado y evaluación fuera de entrenamiento.
     """
+    x_entrenar, x_probar, y_entrenar, y_probar, omitidas = separar_datos(tabla, objetivo, tarea, semilla)
+    modelo = ModeloCART(tarea, profundidad, semilla).fit(x_entrenar, y_entrenar)
+    predicciones = modelo.predict(x_probar)
+    metricas, detalle = evaluar_cart(y_probar, predicciones, tarea)
+    return ResultadoCART(modelo, metricas, detalle, len(y_entrenar), len(y_probar), omitidas)
+
+
+def separar_datos(tabla, objetivo, tarea, semilla=42):
+    """Genera la misma reserva de prueba para todos los candidatos."""
     etiquetas = tabla[objetivo].dropna()
     omitidas = len(tabla) - len(etiquetas)
     predictores = tabla.loc[tabla[objetivo].notna()].drop(columns=objetivo)
@@ -66,7 +75,4 @@ def ejecutar_cart(tabla, objetivo, tarea, profundidad=3, semilla=42):
             raise ValueError("La regresión requiere valores objetivo numéricos y finitos.")
     x_entrenar, x_probar, y_entrenar, y_probar = train_test_split(
         predictores, etiquetas, test_size=reserva, stratify=estratos, random_state=semilla)
-    modelo = ModeloCART(tarea, profundidad, semilla).fit(x_entrenar, y_entrenar)
-    predicciones = modelo.predict(x_probar)
-    metricas, detalle = evaluar_cart(y_probar, predicciones, tarea)
-    return ResultadoCART(modelo, metricas, detalle, len(y_entrenar), len(y_probar), omitidas)
+    return x_entrenar, x_probar, y_entrenar, y_probar, omitidas
