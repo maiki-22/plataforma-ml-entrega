@@ -6,6 +6,10 @@ Aplicación en Python y Streamlit para cargar datos tabulares, realizar análisi
 
 [Descargar el informe técnico (PDF, 15 páginas)](Informe_tecnico.pdf). Incluye arquitectura y UML, metodología, resultados de defectos de acero y sismos, verificación auxiliar de regresión y referencias.
 
+## Presentación de defensa
+
+[Descargar la presentación (PDF, 9 diapositivas)](Defensa.pdf). Exportada desde Penpot en formato panorámico 16:9 para acompañar la defensa y las demostraciones en vivo.
+
 ## Instalación y ejecución
 
 Requiere Python 3.12. Desde una terminal:
