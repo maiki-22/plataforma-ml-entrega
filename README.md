@@ -1,6 +1,10 @@
 # Sistema modular y escalable de Machine Learning
 
-Aplicación en Python y Streamlit para cargar datos tabulares, realizar análisis exploratorio y ejecutar modelos supervisados o agrupamiento con K-Means. Autor: Miguel Cortes.
+Aplicación en Python y Streamlit para cargar datos tabulares, realizar análisis exploratorio y ejecutar modelos supervisados o agrupamiento con K-Means. Autor: Miguel Cortés.
+
+## Informe técnico
+
+[Descargar el informe técnico (PDF, 15 páginas)](Informe_tecnico.pdf). Incluye arquitectura y UML, metodología, resultados de defectos de acero y sismos, verificación auxiliar de regresión y referencias.
 
 ## Instalación y ejecución
 
