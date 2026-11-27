@@ -1,7 +1,7 @@
 """Métricas de evaluación sobre las filas reservadas."""
 
 import pandas as pd
-from sklearn.metrics import accuracy_score, confusion_matrix, mean_absolute_error, r2_score, root_mean_squared_error
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, mean_absolute_error, r2_score, root_mean_squared_error
 
 
 def evaluar_supervisado(reales, predicciones, tarea):
@@ -26,12 +26,11 @@ def evaluar_supervisado(reales, predicciones, tarea):
         matriz = confusion_matrix(reales, predicciones, labels=etiquetas, normalize="true")
         detalle = pd.DataFrame(matriz, index=pd.Index(etiquetas, name="Real"),
                                columns=pd.Index(etiquetas, name="Predicción"))
-        return {"Exactitud": accuracy_score(reales, predicciones)}, detalle
+        return {
+            "Exactitud": accuracy_score(reales, predicciones),
+            "F1 macro": f1_score(reales, predicciones, average="macro", zero_division=0),
+        }, detalle
     detalle = pd.DataFrame({"Real": reales, "Predicción": predicciones, "Residual": reales - predicciones})
     return {"MAE": mean_absolute_error(reales, predicciones),
             "RMSE": root_mean_squared_error(reales, predicciones),
             "R²": r2_score(reales, predicciones)}, detalle
-
-
-# Nombre utilizado en las primeras versiones del módulo.
-evaluar_cart = evaluar_supervisado

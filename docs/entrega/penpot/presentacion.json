@@ -1,0 +1,82 @@
+{
+  "file": "73820b83-f76d-805f-8009-01bb5c4fdc13",
+  "page": "6c37355b-d824-809f-8009-01c34a6bc284",
+  "boards": [
+    {
+      "id": "6c37355b-d824-809f-8009-01c356c9f8f5",
+      "name": "01 · Sistema modular y escalable de Machine Learning"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c3578bf78c",
+      "name": "02 · Cada módulo tiene una responsabilidad"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c358368754",
+      "name": "03 · POO: contrato, herencia y composición"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c359168641",
+      "name": "04 · Qué recibe y devuelve cada etapa"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c39f4407c1",
+      "name": "05 · Objetivo y tarea son decisiones distintas"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c39ff0e15e",
+      "name": "06 · Preparar datos sin aprender de prueba"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c3a078c090",
+      "name": "07 · Extender modelos sin duplicar el flujo"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c3a131dd7c",
+      "name": "08 · La validación ajusta el pipeline completo"
+    },
+    {
+      "id": "6c37355b-d824-809f-8009-01c3a2ef16de",
+      "name": "09 · Ahora, las dos rutas en la aplicación"
+    }
+  ],
+  "notes": [
+    {
+      "slide": "01 · Sistema modular y escalable de Machine Learning",
+      "notes": "Presentar propósito, autor, docente y fecha. Una tabla conduce a predicción o agrupamiento según el objetivo disponible."
+    },
+    {
+      "slide": "02 · Cada módulo tiene una responsabilidad",
+      "notes": "Explicar cada responsabilidad con su función. main.py selecciona y organiza; la interfaz recibe eventos. La lógica de cálculo no depende de widgets. Ejemplo de bajo acoplamiento: agregar F1 en metrics alimenta consumidores existentes. EDA y preparación son responsabilidades distintas."
+    },
+    {
+      "slide": "03 · POO: contrato, herencia y composición",
+      "notes": "Las flechas de triángulo indican herencia. La flecha usa indica composición/dependencia. ModeloBase exige fit/predict/score y proporciona save. ModeloValidado compone un candidato y una búsqueda; no todos los estimadores heredan de ModeloBase. Mostrar dónde vive cada clase en models/."
+    },
+    {
+      "slide": "04 · Qué recibe y devuelve cada etapa",
+      "notes": "Seguir el dato: interfaz devuelve nombre/bytes; cargar_tabla produce DataFrame; seleccionar_ruta produce Ruta(objetivo,tarea,motivo). EDA produce Diagnostico. En supervisado se extrae y de X antes del ajuste. El resultado contiene evaluación; Publicacion une resultado con archivos para la vista. EDA y sugerencia no son entrenamiento."
+    },
+    {
+      "slide": "05 · Objetivo y tarea son decisiones distintas",
+      "notes": "Prioridad: Sin objetivo explícito, luego objetivo manual, después detección automática. Nombres se comparan sin mayúsculas y sufijos _target/_objetivo. Varias candidatas por nombre no se resuelven arbitrariamente. La última categórica exige pocas clases repetidas. Enteros repetidos pueden sugerir clases aunque sean una medición: la persona corrige la tarea. Ruta no contiene un modelo."
+    },
+    {
+      "slide": "06 · Preparar datos sin aprender de prueba",
+      "notes": "fit aprende mediana, categorías, escala y parámetros del estimador; predict transforma con lo aprendido y predice. No ajustar el preparador sobre la tabla completa. Durante CV cada pliegue reajusta su propio pipeline. EDA describe toda la tabla pero no sustituye la preparación de entrenamiento. En K-Means se prepara el conjunto explorado completo porque no hay reserva supervisada."
+    },
+    {
+      "slide": "07 · Extender modelos sin duplicar el flujo",
+      "notes": "El fragmento corresponde a modelos_lineales en regresión. El catálogo combina familias. escalar y requiere_densa cambian el pipeline. ModeloValidado antepone modelo__ a los parámetros para dirigirlos al estimador. Agregar un valor a la rejilla no garantiza que gane. Un estimador nuevo debe ser compatible con scikit-learn y con predict_proba/otras salidas requeridas por el reporte."
+    },
+    {
+      "slide": "08 · La validación ajusta el pipeline completo",
+      "notes": "comparar crea una partición y pliegues comunes a candidatos. StratifiedKFold en clasificación y KFold en regresión. El número de pliegues se acota según soporte. GridSearchCV evalúa Pipeline(pasos), selecciona best_params_ y reajusta por defecto. scoring es accuracy o neg_mean_absolute_error. .score del modelo puede ser exactitud o R² y no necesariamente el criterio de selección."
+    },
+    {
+      "slide": "09 · Ahora, las dos rutas en la aplicación",
+      "notes": "Cambiar a la app al minuto8. Acero: ejecutar CART profundidad3/semilla42, explicar99/104 y9/11 suciedad. Abrir Comparación para mostrar curvas y superficie si el tiempo lo permite. Sismos: automático sin objetivo, Kmax8, ejecutar; explicar codoK5 vs siluetaK6, perfiles y PCA posterior. Destinar3:30 a cada caso, incluyendo cierre. Los gráficos estáticos quedan como respaldo, no como parte del recorrido principal."
+    }
+  ],
+  "overflows": [],
+  "support_page": "6c37355b-d824-809f-8009-01be0fb2b1f3"
+}

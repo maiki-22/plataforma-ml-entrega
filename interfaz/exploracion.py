@@ -88,7 +88,7 @@ def mostrar_relaciones(diagnostico, figuras) -> None:
                                 file_name=figuras[metodo].name, mime="image/png",
                                 icon=":material/download:", on_click="ignore")
         if metodo in matrices:
-            detalle.caption("El mapa incluye hasta ocho variables con correlación definida.")
+            detalle.caption("El mapa incluye hasta ocho variables con valores definidos en la matriz.")
             with detalle.expander("Matriz completa", expanded=True):
                 st.dataframe(matrices[metodo])
     else:

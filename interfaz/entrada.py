@@ -33,7 +33,10 @@ def seleccionar_archivo(directorio: Path) -> tuple[str, bytes] | None:
         if archivo is None:
             return
         return archivo.name, archivo.getvalue()
-    nombre = st.selectbox("Archivo de ejemplo", ["flores.csv", "mediciones.tsv", "iris_petalos.csv", "iris_medidas.tsv"], key="ejemplo")
+    nombre = st.selectbox("Archivo de ejemplo", [
+        "flores.csv", "mediciones.tsv", "iris_petalos.csv", "iris_medidas.tsv",
+        "defectos_acero.csv", "sismos_profundos_pacifico.tsv",
+    ], key="ejemplo")
     return nombre, (directorio / nombre).read_bytes()
 
 

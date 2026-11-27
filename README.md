@@ -107,6 +107,13 @@ print(resultado.semilla, resultado.metricas)
 print(resultado.particion.objetivo_prueba.head())
 ```
 
+## Ejemplos con datos reales
+
+Los dos archivos están disponibles en **Ejemplo local** y se pueden ejecutar sin conexión a internet.
+
+- **`defectos_acero.csv` · Control de calidad.** ¿Se puede distinguir una raya tipo K, una mancha y suciedad usando el logaritmo del área en píxeles y el índice de luminosidad? En **Modelo**, ejecutar CART con profundidad 3 y revisar la matriz de confusión por clase. En **Comparación** se puede ver la superficie de decisión con los mismos dos predictores. El archivo conserva las 518 observaciones de esas tres clases del conjunto original. Se combinaron los indicadores `K_Scatch`, `Stains` y `Dirtiness` en `clase` y se conservaron `LogOfAreas` y `Luminosity_Index` con encabezados en español. El conjunto original contiene observaciones de defectos, por lo que el ejercicio clasifica el tipo de un defecto ya detectado. Fuente: Buscema, Terzi y Tastle (2010), [Steel Plates Faults, UCI](https://doi.org/10.24432/C5J88N), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). [Copia tabular utilizada](https://raw.githubusercontent.com/iamMPAI/Steel-plates-faults/main/stell-faults.csv).
+- **`sismos_profundos_pacifico.tsv` · Exploración de actividad sísmica.** ¿Qué perfiles aparecen al agrupar por ubicación, profundidad y magnitud? En **Agrupamiento**, evaluar hasta K=8 y comparar el codo, las siluetas y la proyección PCA. El archivo contiene 250 sismos de 2024 UTC, con magnitud ≥4,5 y profundidad ≥300 km, en un recorte del Pacífico suroccidental entre 32°S y 12°S y hasta 15° a cada lado del meridiano de 180°. Se trasladó el origen de la longitud a ese meridiano para que 179°E y 179°O queden a 2° de distancia. La última columna guarda la magnitud preferida del catálogo y las cuatro columnas se usan como predictores de agrupamiento. Los grupos describen similitudes en este recorte. Fuente: [USGS, catálogo ANSS ComCat](https://doi.org/10.5066/F7MS3QZH), a partir de la [copia del catálogo profundo](https://raw.githubusercontent.com/liveatlasearth/earthquake-catalogs/main/data/deep_earthquakes_m4_5_plus_2016_2025.csv) de Nathan Ridge y [Live Atlas](https://www.liveatlas.earth/), versión 1.0, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
 ## Informe y demostración
 
 El [informe técnico](docs/entrega/Informe_tecnico.pdf) documenta el diseño, el diagrama de clases, la evaluación y sus límites. La [presentación en PDF](docs/entrega/Defensa.pdf) acompaña las dos ejecuciones en vivo.

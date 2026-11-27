@@ -6,11 +6,15 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from typing import NamedTuple
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 
 
-NOMBRES_OBJETIVO = {"target", "objetivo", "clase", "class", "label", "etiqueta", "y"}
+NOMBRES_OBJETIVO = {
+    "target", "objetivo", "clase", "class", "label", "etiqueta", "especie", "species", "respuesta", "outcome", "y",
+}
+AGRUPAMIENTO = "Agrupamiento (K-Means)"
 
 
 class Lectura(NamedTuple):
@@ -102,6 +106,34 @@ class Ruta:
     motivo: str
 
 
+def _parece_etiquetada(serie):
+    """Comprueba que haya pocas clases y que todas se repitan."""
+    frecuencias = serie.value_counts()
+    frecuencias = frecuencias[frecuencias > 0]
+    return 2 <= len(frecuencias) <= min(20, frecuencias.sum() // 3) and frecuencias.min() >= 2
+
+
+def _detectar_objetivo(tabla):
+    """Sugiere un objetivo por nombre o por la estructura de la última columna."""
+    candidatas = [
+        nombre for nombre in tabla
+        if nombre.casefold() in NOMBRES_OBJETIVO or nombre.casefold().endswith(("_target", "_objetivo"))
+    ]
+    if len(candidatas) > 1:
+        return None, "Hay varias candidatas: " + ", ".join(candidatas) + "."
+    if candidatas:
+        return candidatas[0], "Objetivo sugerido por el nombre de la columna."
+    if tabla.shape[1] > 1:
+        ultima = tabla.iloc[:, -1]
+        categorica = (
+            isinstance(ultima.dtype, pd.CategoricalDtype)
+            or pd.api.types.infer_dtype(ultima, skipna=True) in {"string", "boolean"}
+        )
+        if categorica and _parece_etiquetada(ultima):
+            return ultima.name, "Objetivo sugerido porque la última columna contiene pocas categorías repetidas."
+    return None, "No se encontró una candidata clara a objetivo."
+
+
 def seleccionar_ruta(tabla, objetivo=None, sin_objetivo=False):
     """Determina la tarea a partir del objetivo explícito o de una candidata.
 
@@ -120,20 +152,23 @@ def seleccionar_ruta(tabla, objetivo=None, sin_objetivo=False):
         Objetivo, tipo de tarea sugerida y explicación.
     """
     if sin_objetivo:
-        return Ruta(None, "Agrupamiento (K-Means)", "Se eligió trabajar sin objetivo.")
+        return Ruta(None, AGRUPAMIENTO, "Se eligió trabajar sin objetivo.")
+    automatica = objetivo is None
     motivo = "Objetivo indicado manualmente."
-    if objetivo is None:
-        candidatas = [c for c in tabla if c.casefold() in NOMBRES_OBJETIVO]
-        if len(candidatas) != 1:
-            motivo = ("Hay varias candidatas: " + ", ".join(candidatas)
-                      if candidatas else "Ningún nombre identifica una columna objetivo.")
-            return Ruta(None, "Agrupamiento (K-Means)", motivo)
-        objetivo = candidatas[0]
-        motivo = "Objetivo detectado por el nombre de la columna."
+    if automatica:
+        objetivo, motivo = _detectar_objetivo(tabla)
+        if objetivo is None:
+            return Ruta(None, AGRUPAMIENTO, motivo)
     if objetivo not in tabla:
         raise ValueError(f"La columna objetivo «{objetivo}» no existe.")
-    serie = tabla[objetivo]
-    if serie.isna().all():
-        raise ValueError("La columna objetivo está vacía. Elige otra o selecciona «Sin objetivo».")
-    numerica = pd.api.types.is_numeric_dtype(serie) and not pd.api.types.is_bool_dtype(serie)
+    valores = tabla[objetivo].dropna()
+    numerica = pd.api.types.is_numeric_dtype(valores) and not pd.api.types.is_bool_dtype(valores)
+    finitos = np.isfinite(valores) if numerica else None
+    if valores.empty or (numerica and not finitos.any()):
+        mensaje = f"La columna objetivo «{objetivo}» está vacía o no contiene valores finitos."
+        if automatica:
+            return Ruta(None, AGRUPAMIENTO, mensaje)
+        raise ValueError(mensaje + " Elige otra o selecciona «Sin objetivo».")
+    if numerica and finitos.all() and (valores % 1 == 0).all() and _parece_etiquetada(valores):
+        return Ruta(objetivo, "Clasificación", motivo + " Sus valores enteros se repiten como códigos de clase.")
     return Ruta(objetivo, "Regresión" if numerica else "Clasificación", motivo)

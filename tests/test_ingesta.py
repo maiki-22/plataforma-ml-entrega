@@ -42,6 +42,49 @@ class PruebasIngesta(unittest.TestCase):
         with self.assertRaises(ValueError):
             seleccionar_ruta(tabla, "ausente")
 
+    def test_detecta_la_etiqueta_por_nombre_o_por_categorias_finales(self):
+        tabla = pd.DataFrame({"medida": range(9), "grupo": ["A", "B", "C"] * 3})
+        ruta = seleccionar_ruta(tabla)
+        self.assertEqual((ruta.objetivo, ruta.tarea), ("grupo", "Clasificación"))
+        self.assertIn("última columna", ruta.motivo)
+        tabla = tabla.rename(columns={"grupo": "Especie"})[["Especie", "medida"]]
+        self.assertEqual(seleccionar_ruta(tabla).objetivo, "Especie")
+        tabla["identificador"] = [f"muestra-{i}" for i in range(9)]
+        self.assertIsNone(seleccionar_ruta(tabla.drop(columns="Especie")).objetivo)
+        self.assertIsNone(seleccionar_ruta(tabla.drop(columns=["Especie", "identificador"])).objetivo)
+
+    def test_distingue_codigos_de_clase_y_objetivos_continuos(self):
+        tabla = pd.DataFrame({"medida": range(9), "target": [0, 1, 2] * 3})
+        ruta = seleccionar_ruta(tabla)
+        self.assertEqual(ruta.tarea, "Clasificación")
+        self.assertIn("códigos de clase", ruta.motivo)
+        tabla = tabla.rename(columns={"target": "precio_objetivo"})
+        tabla["precio_objetivo"] = [2.5, 3.125, 4.625] * 3
+        self.assertEqual(seleccionar_ruta(tabla).tarea, "Regresión")
+
+    def test_objetivo_invalido_en_modo_automatico_o_manual(self):
+        for valor in (None, float("inf")):
+            with self.subTest(valor=valor):
+                tabla = pd.DataFrame({"medida": range(6), "target": [valor] * 6})
+                ruta = seleccionar_ruta(tabla)
+                self.assertIsNone(ruta.objetivo)
+                self.assertIn("K-Means", ruta.tarea)
+                self.assertIn("target", ruta.motivo)
+                with self.assertRaisesRegex(ValueError, "Elige otra"):
+                    seleccionar_ruta(tabla, "target")
+
+    def test_streamlit_advierte_y_permite_agrupar_con_un_objetivo_vacio(self):
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "main.py")).run()
+        app.radio(key="origen").set_value("Subir archivo").run()
+        app.file_uploader[0].upload("datos.csv", b"medida,target\n1,\n2,\n3,\n7,\n8,\n9,\n").run()
+        self.assertIn("está vacía", app.warning[0].value)
+        self.assertIn("K-Means", app.warning[0].value)
+        next(control for control in app.button if control.label == "Evaluar grupos").click().run()
+        resultado, _ = app.session_state["estado_analisis"].grupos.publicacion
+        self.assertEqual(len(resultado.filas), 6)
+        self.assertFalse(app.error)
+        self.assertFalse(app.exception)
+
     def test_reutiliza_tabla_solo_si_coinciden_contenido_y_lectura(self):
         with patch("interfaz.entrada.cargar_tabla", wraps=cargar_tabla) as cargar:
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "main.py")).run()

@@ -1,0 +1,52 @@
+PRESENTACIÓN PRINCIPAL · MIGUEL CORTES
+Docente: Edio mardones · Fecha: 27/11/26
+9 láminas: 8 minutos. Dos demostraciones en la app: 7 minutos.
+En Penpot: Defensa ML · Miguel Cortes. La versión larga está en Apoyo · versión ampliada.
+
+01 · Sistema modular y escalable de Machine Learning  [00:00–00:20]
+Presentar propósito, autor, docente y fecha. Una tabla conduce a predicción o agrupamiento según el objetivo disponible.
+
+02 · Cada módulo tiene una responsabilidad  [00:20–01:15]
+Explicar cada responsabilidad con su función. main.py selecciona y organiza; la interfaz recibe eventos. La lógica de cálculo no depende de widgets. Ejemplo de bajo acoplamiento: agregar F1 en metrics alimenta consumidores existentes. EDA y preparación son responsabilidades distintas.
+
+03 · POO: contrato, herencia y composición  [01:15–02:15]
+Las flechas de triángulo indican herencia. La flecha usa indica composición/dependencia. ModeloBase exige fit/predict/score y proporciona save. ModeloValidado compone un candidato y una búsqueda; no todos los estimadores heredan de ModeloBase. Mostrar dónde vive cada clase en models/.
+
+04 · Qué recibe y devuelve cada etapa  [02:15–03:15]
+Seguir el dato: interfaz devuelve nombre/bytes; cargar_tabla produce DataFrame; seleccionar_ruta produce Ruta(objetivo,tarea,motivo). EDA produce Diagnostico. En supervisado se extrae y de X antes del ajuste. El resultado contiene evaluación; Publicacion une resultado con archivos para la vista. EDA y sugerencia no son entrenamiento.
+
+05 · Objetivo y tarea son decisiones distintas  [03:15–04:15]
+Prioridad: Sin objetivo explícito, luego objetivo manual, después detección automática. Nombres se comparan sin mayúsculas y sufijos _target/_objetivo. Varias candidatas por nombre no se resuelven arbitrariamente. La última categórica exige pocas clases repetidas. Enteros repetidos pueden sugerir clases aunque sean una medición: la persona corrige la tarea. Ruta no contiene un modelo.
+
+06 · Preparar datos sin aprender de prueba  [04:15–05:25]
+fit aprende mediana, categorías, escala y parámetros del estimador; predict transforma con lo aprendido y predice. No ajustar el preparador sobre la tabla completa. Durante CV cada pliegue reajusta su propio pipeline. EDA describe toda la tabla pero no sustituye la preparación de entrenamiento. En K-Means se prepara el conjunto explorado completo porque no hay reserva supervisada.
+
+07 · Extender modelos sin duplicar el flujo  [05:25–06:35]
+El fragmento corresponde a modelos_lineales en regresión. El catálogo combina familias. escalar y requiere_densa cambian el pipeline. ModeloValidado antepone modelo__ a los parámetros para dirigirlos al estimador. Agregar un valor a la rejilla no garantiza que gane. Un estimador nuevo debe ser compatible con scikit-learn y con predict_proba/otras salidas requeridas por el reporte.
+
+08 · La validación ajusta el pipeline completo  [06:35–07:40]
+comparar crea una partición y pliegues comunes a candidatos. StratifiedKFold en clasificación y KFold en regresión. El número de pliegues se acota según soporte. GridSearchCV evalúa Pipeline(pasos), selecciona best_params_ y reajusta por defecto. scoring es accuracy o neg_mean_absolute_error. .score del modelo puede ser exactitud o R² y no necesariamente el criterio de selección.
+
+09 · Ahora, las dos rutas en la aplicación  [07:40–08:00]
+Cambiar a la app al minuto8. Acero: ejecutar CART profundidad3/semilla42, explicar99/104 y9/11 suciedad. Abrir Comparación para mostrar curvas y superficie si el tiempo lo permite. Sismos: automático sin objetivo, Kmax8, ejecutar; explicar codoK5 vs siluetaK6, perfiles y PCA posterior. Destinar3:30 a cada caso, incluyendo cierre. Los gráficos estáticos quedan como respaldo, no como parte del recorrido principal.
+
+DEMOSTRACIÓN SUPERVISADA · 08:00–11:30
+08:00–08:30  Abrir defectos_acero.csv. Explicar qué se predice y por qué se detecta clase.
+08:30–09:10  Mostrar calidad y una relación relevante del EDA.
+09:10–10:10  Ejecutar CART con profundidad 3. Seguir fit/predict hasta las métricas.
+10:10–11:10  Revisar matriz y una curva de Comparación. Mostrar superficie de decisión si el tiempo permite.
+11:10–11:30  Interpretar errores por clase: 99/104 aciertos; 9/11 en suciedad. Contrastar con referencia mayoritaria.
+
+DEMOSTRACIÓN NO SUPERVISADA Y CIERRE · 11:30–15:00
+11:30–12:00  Abrir sismos_profundos_pacifico.tsv. Explicar el aviso y la ruta sin objetivo.
+12:00–12:40  Señalar variables, escalado y pregunta exploratoria.
+12:40–13:20  Ejecutar agrupamiento hasta K=8.
+13:20–14:10  Comparar codo y siluetas; K=5 por codo y K=6 con silueta algo mayor. Revisar CHI/DBI.
+14:10–14:40  Explicar PCA posterior y perfiles de grupos en el dominio.
+14:40–15:00  Cerrar: modularidad, evaluación separada y límites de interpretación.
+
+PREPARACIÓN
+Iniciar desde la raíz: source .venv/bin/activate; python -m streamlit run main.py
+Ensayar los tiempos de la comparación. Conservar sus resultados disponibles para mostrar las curvas sin agotar la demostración.
+Mantener las láminas ampliadas como respaldo, identificando cuándo se muestran resultados previos.
+Para preguntas de código: decisión → función responsable → dato de entrada/salida → comprobación.

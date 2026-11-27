@@ -41,25 +41,37 @@ def guardar_figuras_eda(tabla: pd.DataFrame, diagnostico: Diagnostico, destino: 
     dict
         Rutas a figuras PNG de 300 DPI, identificadas por título.
     """
+    matrices = [
+        ("Pearson", diagnostico.pearson, "Correlación de Pearson"),
+        ("Spearman", diagnostico.spearman, "Correlación de Spearman"),
+        ("Covarianza", diagnostico.covarianza, "Covarianza muestral"),
+    ]
     figuras = {}
-    if not diagnostico.pearson.notna().any().any():
-        return figuras
-    destino.mkdir(parents=True, exist_ok=True)
-    carpeta = Path(mkdtemp(prefix="eda-", dir=destino))
-    nombres = diagnostico.pearson.columns[diagnostico.pearson.notna().any()][:8]
-    for metodo, matriz in [("Pearson", diagnostico.pearson), ("Spearman", diagnostico.spearman)]:
+    carpeta = None
+    for metodo, matriz, titulo in matrices:
+        matriz = matriz.where(np.isfinite(matriz))
+        nombres = matriz.columns[matriz.notna().any()][:8]
+        if nombres.empty:
+            continue
+        if carpeta is None:
+            destino.mkdir(parents=True, exist_ok=True)
+            carpeta = Path(mkdtemp(prefix="eda-", dir=destino))
+        vista = matriz.loc[nombres, nombres]
+        covarianza = metodo == "Covarianza"
+        limite = (vista.abs().max().max() or 1) if covarianza else 1
         figura = Figure(figsize=(8, 6), layout="constrained")
         eje = figura.subplots()
-        sns.heatmap(matriz.loc[nombres, nombres], vmin=-1, vmax=1, cmap="vlag", annot=True,
-                    fmt=".2f", square=True, ax=eje, cbar_kws={"label": "Correlación"})
-        eje.set_title(f"Correlación de {metodo}")
+        sns.heatmap(vista, vmin=-limite, vmax=limite, cmap="vlag", annot=True,
+                    fmt=".3g" if covarianza else ".2f", square=True, ax=eje,
+                    cbar_kws={"label": "Covarianza" if covarianza else "Correlación"})
+        eje.set_title(titulo)
         eje.tick_params(axis="y", labelrotation=0)
         ruta = carpeta / f"{metodo.lower()}.png"
         _preparar_figura(figura)
         figura.savefig(ruta, dpi=300, bbox_inches="tight")
         figuras[metodo] = ruta
 
-    if diagnostico.pares.empty:
+    if carpeta is None or diagnostico.pares.empty:
         return figuras
 
     primera, segunda = diagnostico.pares.iloc[0][["Variable A", "Variable B"]]
