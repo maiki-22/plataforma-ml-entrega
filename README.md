@@ -1,124 +1,108 @@
-# Cuaderno de datos
+# Sistema modular y escalable de Machine Learning
 
-Aplicación local en Python y Streamlit para cargar tablas, explorar sus distribuciones y relaciones, revisar una muestra y seleccionar la ruta de aprendizaje.
+Aplicación en Python y Streamlit para cargar datos tabulares, realizar análisis exploratorio y ejecutar modelos supervisados o agrupamiento con K-Means. Autor: Miguel Cortes.
 
-## Ejecutar en local
+## Instalación y ejecución
 
-Desde la carpeta del repositorio, con Python 3.12 instalado, ejecutar en Linux o macOS:
+Requiere Python 3.12. Desde una terminal:
 
 ```bash
+git clone --branch entrega https://github.com/maiki-22/plataforma-ml-entrega.git
+cd plataforma-ml-entrega
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m streamlit run main.py
 ```
 
-En Windows, crear el entorno con `py -3.12 -m venv .venv` y activarlo desde PowerShell con `.\.venv\Scripts\Activate.ps1`. Los comandos de instalación y arranque son los mismos.
+Abrir la dirección local indicada por Streamlit. En Windows, crear el entorno con `py -3.12 -m venv .venv` y activarlo en PowerShell con `.\.venv\Scripts\Activate.ps1`; después ejecutar los mismos comandos de instalación y arranque.
 
-## Comprobar la carga y el enrutamiento
+## Demostración con los datasets de entrega
 
-1. Abrir la dirección local que indica Streamlit. El panel lateral comienza con un ejemplo local. En `flores.csv` se muestran 36 filas, tres columnas y la ruta de clasificación por la columna `clase`.
-2. Cambiar a `mediciones.tsv`. Las dos variables son mediciones sin etiqueta. La aplicación explica la ausencia de objetivo y selecciona agrupamiento con K-Means.
-3. Elegir **Subir archivo** para probar CSV, TSV o Parquet. Para texto se admite UTF-8 o Latin-1. En **Opciones de lectura** se puede corregir el delimitador y desmarcar el encabezado para asignar nombres como `columna_1`.
-4. En **Objetivo de aprendizaje**, usar **Elegir columna** para indicar el objetivo. Si un código numérico representa categorías, seleccionar **Clasificación**. **Sin objetivo** permite elegir agrupamiento explícitamente.
+Los archivos están incluidos en `data/` y se seleccionan desde **Ejemplo local**. Su uso no requiere descargar datos adicionales.
 
-Los dos ejemplos son datos sintéticos creados para comprobar estos recorridos. El primero simula medidas de flores en centímetros y tres clases ficticias. El segundo simula temperatura y humedad en tres condiciones ambientales.
+### Clasificación de defectos de acero
 
-El tablero muestra filas, columnas, celdas vacías y valores atípicos del archivo activo. En **Resumen**, la vista previa se puede consultar junto a la distribución de una variable. Seleccionar otra columna actualiza el histograma o las frecuencias por categoría.
+1. Abrir `defectos_acero.csv` y mantener **Variable objetivo → Automática**. Se reconoce `clase` y se propone clasificación.
+2. Revisar **Variables** y **Relaciones** para inspeccionar calidad y asociaciones.
+3. En **Modelo → Árbol CART**, elegir profundidad 3 y pulsar **Ejecutar análisis**.
+4. Interpretar la matriz de confusión normalizada y las importancias. Para semilla 42, se reservan 104 de las 518 filas; el árbol acierta 99 de las 104, con exactitud aproximada de 95.2 % y F1 macro de 0.907.
+5. En **Comparación**, elegir candidatos y pulsar **Comparar modelos**. Revisar métricas de validación y prueba, parámetros, curvas y superficie de decisión.
 
-## Diagnóstico exploratorio
+El análisis distingue tres tipos de defectos previamente detectados usando área logarítmica y luminosidad. No evalúa la detección de placas sanas frente a defectuosas.
 
-En **Variables**, la aplicación resume por columna el tipo, los faltantes y la cardinalidad de las variables no numéricas. Para las numéricas muestra cuartiles, varianza muestral, asimetría y recuento de atípicos según la regla de 1,5 rangos intercuartílicos. Como criterios exploratorios, señala varianza positiva de hasta 10⁻⁶ en la escala original y asimetría absoluta superior a 1. La varianza depende de las unidades de medida.
+### Agrupamiento de sismos
 
-En **Relaciones**, elegir Pearson, Spearman, Covarianza o, cuando existan pares válidos, Dispersión. Junto a cada mapa están la matriz completa y la descarga del PNG. Los cálculos bivariados usan las filas con valores finitos en ambas columnas. Una correlación indefinida aparece vacía. La tabla de pares destacados usa Pearson positivo mayor que 0,85. La figura de dispersión selecciona el par con mayor correlación absoluta, que también puede ser negativa.
+1. Abrir `sismos_profundos_pacifico.tsv` y mantener **Automática**. La aplicación informa que no encuentra un objetivo claro y selecciona agrupamiento.
+2. Revisar los cuatro atributos: latitud, longitud relativa al meridiano de 180°, profundidad y magnitud.
+3. En **Agrupamiento**, mantener K máximo 8 y pulsar **Evaluar grupos**.
+4. Revisar codo, siluetas y proyección PCA. Con semilla 42, el codo selecciona K=5 y la silueta media es aproximadamente 0.392; K=6 tiene una silueta ligeramente mayor, de 0.402.
+5. Descargar las asignaciones por fila para interpretar perfiles en las variables originales.
 
-Los mapas anotados incluyen hasta ocho variables para facilitar la lectura. Las figuras se guardan como PNG a 300 DPI en una carpeta propia dentro de `reports/`. Cambiar el objetivo conserva el diagnóstico de la misma tabla.
+Los grupos describen similitudes entre los 250 eventos del recorte; no constituyen pronósticos sísmicos ni una evaluación del riesgo.
 
-## Organización
+## Cargar otros archivos
+
+**Subir archivo** acepta CSV, TSV y Parquet. Para texto se admite UTF-8 y Latin-1, delimitador automático o explícito y archivos con o sin encabezado. Se validan nombres de columnas y estructura de filas.
+
+El objetivo se sugiere por nombres conocidos, sufijos o una última columna categórica con pocas categorías repetidas. La detección es heurística: se puede corregir con **Elegir columna** y cambiar entre clasificación y regresión. **Sin objetivo** fuerza agrupamiento utilizando las columnas recibidas. Seleccionar una ruta no inicia por sí solo el entrenamiento.
+
+Para probar regresión, abrir `mediciones.tsv`, elegir manualmente `temperatura_c` y seleccionar **Regresión**. Los ejemplos pequeños `flores.csv`, `mediciones.tsv` y los dos archivos Iris se conservan también para las pruebas y recorridos de la aplicación.
+
+## Arquitectura
 
 | Ubicación | Responsabilidad |
 |---|---|
-| main.py | Entrada de Streamlit y navegación del tablero |
-| interfaz/ | Controles de archivo y objetivo, vistas de exploración y ejecución de modelos |
-| core/ | Carga de tablas, análisis exploratorio, partición de entrenamiento y prueba y preprocesamiento |
-| flujo.py | Entrenamiento y evaluación del árbol CART |
-| models/ | Contrato común y familias supervisadas y no supervisadas |
-| evaluation/ | Métricas, figuras y exportación de resultados por ejecución |
-| data/ y reports/ | Ejemplos locales y salidas por ejecución |
-| tests/ | Pruebas de ingesta, diagnóstico, modelos, exportación y recorridos en Streamlit |
+| `main.py` | Entrada interactiva y navegación |
+| `interfaz/` | Controles, vistas y estado de sesión |
+| `core/loader.py` | Ingesta, validación y sugerencia de ruta |
+| `core/eda.py` | Faltantes, cardinalidad, varianza, asimetría, IQR, covarianza, Pearson y Spearman |
+| `core/particion.py` | Separación de predictores/objetivo y reserva de prueba |
+| `core/preprocessor.py` | Imputación, codificación y escalado |
+| `models/base.py` | Contrato `fit`, `predict`, `score` y `save` |
+| `models/supervised/` | Familias, candidatos y validación de hiperparámetros |
+| `models/unsupervised/kmeans_engine.py` | Comparación de K e inicializaciones y proyección |
+| `flujo.py` | Ajuste y evaluación del CART interactivo |
+| `evaluation/` | Métricas, figuras y exportación |
+| `data/`, `reports/`, `tests/` | Datos incluidos, resultados y pruebas |
 
-Con el entorno activado, ejecutar las pruebas con `python -m unittest discover -s tests -v`.
+## Modelos y preparación
 
-## Preparación de predictores
-
-Las variables numéricas usan la mediana de entrenamiento para completar faltantes y valores infinitos. Una columna numérica enteramente vacía en entrenamiento se conserva con valor cero. Los modelos sensibles a escala pueden activar la estandarización posterior. Las categorías se representan con indicadores binarios, incluida la categoría de ausencia cuando se observa durante el ajuste. Una categoría nueva en prueba produce ceros en los indicadores de esa columna.
-
-Para comprobar el tratamiento de faltantes, categorías nuevas y estadísticas de entrenamiento, ejecutar `python -m unittest discover -s tests -p test_preprocesamiento.py -v`.
-
-## Predicción con CART
-
-Con una columna objetivo seleccionada, abrir **Modelo**, elegir la profundidad máxima y pulsar **Ejecutar análisis**. El tablero usa la semilla 42 por defecto. Se reserva el 20 % de las filas con objetivo para prueba, redondeando hacia arriba, con un mínimo de dos filas y, para clasificación, al menos tantas como clases. La partición de clasificación es estratificada. El árbol trabaja con las variables numéricas en su escala original.
-
-- **Clasificación:** abrir `flores.csv` con la detección automática. Revisar la exactitud y la matriz de confusión, normalizada por clase real.
-- **Regresión:** abrir `mediciones.tsv`, elegir manualmente `temperatura_c` como objetivo y mantener **Regresión**. Revisar MAE y RMSE en grados Celsius, R² y el gráfico de valores reales frente a predichos.
-
-La tabla de importancias suma los indicadores categóricos correspondientes a una misma variable de origen. La figura a 300 DPI y el archivo `metricas.csv` se guardan en una carpeta por ejecución de `reports/`. Cambiar de vista conserva el resultado. Al volver a CART o a Comparación se recuperan las opciones seleccionadas. Cambiar la profundidad, los candidatos o el K máximo descarta el resultado de esa vista. Cambiar de archivo, de opciones de lectura, de objetivo o de tarea inicia un nuevo análisis.
-
-## Agrupamiento
-
-Abrir `mediciones.tsv` y pulsar **Agrupamiento → Evaluar grupos**. Se prueban inicializaciones aleatoria y K-Means++ (cinco reinicios cada una) sobre variables preparadas y numéricas estandarizadas. La curva usa la menor inercia por K y parte de K=1 como referencia. Se selecciona la mayor distancia perpendicular a la cuerda normalizada. Por debajo de 0,05 se usa la mayor silueta. CHI y DBI complementan la comparación. Las etiquetas, la silueta individual y las coordenadas PCA de cada fila se exportan junto con las figuras. Para una única dimensión la segunda coordenada se dibuja en cero.
-
-## Comparar modelos supervisados
-
-En **Modelo → Comparación**, seleccionar las familias y pulsar **Comparar modelos**. Se usa la misma reserva que en CART. Cada candidato ajusta el preprocesamiento exclusivamente en la parte de entrenamiento de cada pliegue. Una búsqueda en rejilla compara hasta cinco pliegues reproducibles, estratificados en clasificación. Se optimiza la exactitud en clasificación y el MAE en regresión. El mejor ajuste de cada familia se reentrena con todo el entrenamiento y se evalúa en las mismas filas de prueba. La columna CV corresponde a validación y las demás métricas a prueba.
-
-| Familia | Candidatos de ajuste |
+| Tarea | Modelos disponibles |
 |---|---|
-| Logística, Ridge y Lasso | Regularización mediante C o alpha |
-| CART y Random Forest | Profundidad máxima |
-| k-NN | Vecinos euclidianos con voto o media ponderados por distancia |
-| LVQ1 | Tasa inicial de atracción o repulsión de prototipos por clase |
-| DANN | Número de vecinos bajo la métrica discriminante local regularizada |
-| MARS | Límite de términos aditivos de bisagra con construcción progresiva y poda |
-| GAM | Penalización de suavidad de los splines aditivos |
+| Clasificación | Logística, CART, Random Forest, k-NN, LVQ1 y DANN |
+| Regresión | Ridge, Lasso, CART, Random Forest, k-NN, MARS y GAM |
+| Agrupamiento | K-Means con inicialización aleatoria y K-Means++ |
 
-Cada familia registra su estimador y su rejilla de hiperparámetros en un `Candidato`. El campo `escalar` indica si se estandarizan las variables numéricas y `requiere_densa` indica si el estimador necesita una matriz densa. Para incorporar un estimador a una familia existente, se añade su entrada en ese catálogo. El entrenamiento lee ambas propiedades en cada pliegue.
+Las numéricas completan faltantes e infinitos con la mediana aprendida; una columna numérica vacía en entrenamiento se conserva con cero. Las categóricas utilizan One-Hot, con tratamiento de ausencias y categorías nuevas. El escalado se activa para modelos sensibles a escala y se omite para CART y Random Forest.
 
-LVQ1, DANN y logística se ofrecen para clasificación. Ridge, Lasso, MARS y GAM se ofrecen para regresión. CART, Random Forest y k-NN admiten ambas tareas. Los datos sintéticos sirven para verificar los recorridos y su tamaño limita la interpretación de diferencias de rendimiento.
+En supervisado, prueba se reserva antes de aprender transformaciones. Comparación ajusta el pipeline completo dentro de hasta cinco pliegues comunes, estratificados para clasificación. Se maximiza exactitud en clasificación y se minimiza MAE en regresión. Cada configuración ganadora se reajusta con todo entrenamiento y se evalúa sobre la misma reserva de prueba. El CART interactivo usa directamente la profundidad elegida, sin búsqueda.
 
-La comparación exporta métricas y parámetros elegidos dentro de `reports/comparacion-*/`. Para revisar el fundamento de los métodos especializados, consultar el [artículo de DANN](https://hastie.su.domains/Papers/dann_IEEE.pdf), la [implementación de MARS](https://pypi.org/project/mars-earth/) y la [referencia de GAM](https://pygam.readthedocs.io/en/latest/reference/_autosummary/pygam.pygam.LinearGAM.html).
+K-Means prepara la tabla explorada completa y compara cinco reinicios por cada inicialización y K. Conserva la menor inercia por K y detecta el codo mediante distancia a la cuerda entre extremos normalizados. Si la distancia máxima es inferior a 0.05, selecciona por silueta entre las soluciones conservadas. Calcula también Calinski-Harabasz y Davies-Bouldin. PCA se aplica después del agrupamiento para visualizar puntos y centroides.
 
-## Interpretar y reproducir los reportes
+## Reportes
 
-**Modelo → Comparación** exporta curvas ROC y precisión-recall por clase (uno contra el resto) y microagregadas. El AUC se guarda en `auc.csv` y los puntos en `curvas_por_clase.csv`. Las curvas usan puntajes por clase: en DANN son proporciones de votos y en LVQ1 son cercanías relativas a los prototipos. El modelo con mayor puntuación de validación aporta las curvas de aprendizaje y, si existen exactamente dos predictores numéricos con variación, la superficie de decisión en unidades originales. La curva de aprendizaje muestra los tamaños factibles y mantiene fijos los hiperparámetros seleccionados.
+Se generan carpetas por ejecución dentro de `reports/`, con PNG a 300 DPI, métricas CSV y configuración JSON según la ruta. Los resultados de ejecución no se incluyen en Git.
 
-En regresión, las figuras incluyen la distribución de residuales y la calibración lineal de las predicciones sobre los valores reales de prueba. Con al menos tres observaciones y variación del objetivo, el sombreado representa el intervalo puntual de confianza del 95 % para la media de esa recta bajo el supuesto de errores independientes, homocedásticos y aproximadamente normales. Para repetir una ejecución, comprobar en `configuracion.json` la huella SHA-256 del archivo, las opciones de lectura, la tarea, la semilla y la configuración del modelo.
+- Clasificación: exactitud, F1 macro y matriz normalizada; Comparación exporta además ROC/AUC y Precision-Recall por clase y microagregadas, y curvas de aprendizaje del candidato destacado por CV.
+- Regresión: MAE, RMSE, R², reales frente a predichos y residuales. La banda corresponde al IC puntual del 95 % de la media de una recta de calibración, no a un intervalo predictivo de nuevas observaciones.
+- Agrupamiento: inercia/codo, siluetas individuales, índices, PCA y asignaciones por fila.
 
-Desde Python, `ejecutar_cart`, `comparar` y `agrupar` aceptan el argumento `semilla`. Los resultados supervisados conservan las filas efectivas en `particion`, con los índices y el orden que se usaron para entrenar y evaluar. Las métricas y las curvas de prueba utilizan esa misma reserva. El JSON de cada reporte registra la semilla efectiva.
+La superficie de decisión de clasificación requiere exactamente dos predictores numéricos originales con variación. Para reproducir una ejecución, conservar archivo, opciones de lectura, semilla, parámetros y versiones. Los flujos `ejecutar_cart`, `comparar` y `agrupar` aceptan `semilla` desde Python.
 
-```python
-import pandas as pd
+## Pruebas
 
-from flujo import ejecutar_cart
+Con el entorno activado, desde la raíz:
 
-tabla = pd.read_csv("data/iris_petalos.csv")
-resultado = ejecutar_cart(tabla, objetivo="clase", tarea="Clasificación", semilla=7)
-print(resultado.semilla, resultado.metricas)
-print(resultado.particion.objetivo_prueba.head())
+```bash
+python -m unittest discover -s tests -v
 ```
 
-## Ejemplos con datos reales
+La suite cubre carga, enrutamiento, EDA, preparación sin fuga, modelos, exportación y recorridos de Streamlit.
 
-Los dos archivos están disponibles en **Ejemplo local** y se pueden ejecutar sin conexión a internet.
+## Procedencia de los datos
 
-- **`defectos_acero.csv` · Control de calidad.** ¿Se puede distinguir una raya tipo K, una mancha y suciedad usando el logaritmo del área en píxeles y el índice de luminosidad? En **Modelo**, ejecutar CART con profundidad 3 y revisar la matriz de confusión por clase. En **Comparación** se puede ver la superficie de decisión con los mismos dos predictores. El archivo conserva las 518 observaciones de esas tres clases del conjunto original. Se combinaron los indicadores `K_Scatch`, `Stains` y `Dirtiness` en `clase` y se conservaron `LogOfAreas` y `Luminosity_Index` con encabezados en español. El conjunto original contiene observaciones de defectos, por lo que el ejercicio clasifica el tipo de un defecto ya detectado. Fuente: Buscema, Terzi y Tastle (2010), [Steel Plates Faults, UCI](https://doi.org/10.24432/C5J88N), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). [Copia tabular utilizada](https://raw.githubusercontent.com/iamMPAI/Steel-plates-faults/main/stell-faults.csv).
-- **`sismos_profundos_pacifico.tsv` · Exploración de actividad sísmica.** ¿Qué perfiles aparecen al agrupar por ubicación, profundidad y magnitud? En **Agrupamiento**, evaluar hasta K=8 y comparar el codo, las siluetas y la proyección PCA. El archivo contiene 250 sismos de 2024 UTC, con magnitud ≥4,5 y profundidad ≥300 km, en un recorte del Pacífico suroccidental entre 32°S y 12°S y hasta 15° a cada lado del meridiano de 180°. Se trasladó el origen de la longitud a ese meridiano para que 179°E y 179°O queden a 2° de distancia. La última columna guarda la magnitud preferida del catálogo y las cuatro columnas se usan como predictores de agrupamiento. Los grupos describen similitudes en este recorte. Fuente: [USGS, catálogo ANSS ComCat](https://doi.org/10.5066/F7MS3QZH), a partir de la [copia del catálogo profundo](https://raw.githubusercontent.com/liveatlasearth/earthquake-catalogs/main/data/deep_earthquakes_m4_5_plus_2016_2025.csv) de Nathan Ridge y [Live Atlas](https://www.liveatlas.earth/), versión 1.0, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-
-## Informe y demostración
-
-El [informe técnico](docs/entrega/Informe_tecnico.pdf) documenta el diseño, el diagrama de clases, la evaluación y sus límites. La [presentación en PDF](docs/entrega/Defensa.pdf) acompaña las dos ejecuciones en vivo.
-
-1. Abrir **iris_petalos.csv** y mantener el objetivo automático `clase`. En **Modelo**, ejecutar CART con profundidad 3. Examinar la matriz normalizada y después abrir **Comparación** para consultar las curvas.
-2. Abrir **iris_medidas.tsv**. En **Agrupamiento**, evaluar hasta K=8 y comparar la curva del codo con las siluetas. El archivo contiene las cuatro medidas de las mismas flores y omite la especie.
-
-Ambos archivos derivan de Iris (R. A. Fisher, 1936), en la versión de scikit-learn incluida con el proyecto mediante sus dependencias. Los encabezados están en español y las medidas en centímetros. La vista etiquetada selecciona largo y ancho del pétalo; la vista sin etiquetas conserva también largo y ancho del sépalo. [Descripción y procedencia en scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html) · [Datos originales en UCI](https://archive.ics.uci.edu/dataset/53/iris).
+- **Acero:** Buscema, Terzi y Tastle (2010), [Steel Plates Faults, UCI](https://doi.org/10.24432/C5J88N), CC BY 4.0. Se conservan 518 observaciones de `K_Scatch`, `Stains` y `Dirtiness`; sus indicadores se combinan en `clase`. `LogOfAreas` y `Luminosity_Index` se renombran como predictores. [Copia tabular utilizada](https://raw.githubusercontent.com/iamMPAI/Steel-plates-faults/main/stell-faults.csv).
+- **Sismos:** [USGS, ANSS ComCat](https://doi.org/10.5066/F7MS3QZH), mediante la [copia del catálogo profundo de Nathan Ridge / Live Atlas](https://raw.githubusercontent.com/liveatlasearth/earthquake-catalogs/main/data/deep_earthquakes_m4_5_plus_2016_2025.csv), versión 1.0, CC BY 4.0. Recorte de 250 eventos de 2024 UTC, magnitud ≥4.5 y profundidad ≥300 km, entre 32°S y 12°S y hasta 15° a cada lado de 180°. La longitud se centra en ese meridiano para evitar el salto entre 179°E y 179°O.
+- **Iris:** versión distribuida por scikit-learn del conjunto de Fisher (1936), con encabezados en español. `iris_petalos.csv` conserva dos medidas y la especie; `iris_medidas.tsv` conserva cuatro medidas sin etiqueta. [Descripción](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html).
+- **Flores y mediciones:** ejemplos sintéticos pequeños para verificar los recorridos de clasificación, regresión y agrupamiento.
